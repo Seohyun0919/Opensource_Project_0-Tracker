@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "0:Tracker",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}\\src\\ui-base.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal",
+            "preLaunchTask": "build-ui"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-ui",
+            "type": "shell",
+            "command": "cl.exe",
+            "args": [
+                "/nologo",
+                "/Zi",
+                "/utf-8",
+                "${workspaceFolder}\\src\\ui-base.c",
+                "/Fe:${workspaceFolder}\\src\\ui-base.exe"
+            ],
+            "problemMatcher": ["$msCompile"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
