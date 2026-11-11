@@ -1,8 +1,11 @@
-
 #include <stdio.h>
 #include <stdlib.h>
+#include "study_ui.h"
+#include <windows.h>
 
 int main() {
+    SetConsoleOutputCP(65001);
+    SetConsoleCP(65001);
     int menu;
 
     while (1) {
@@ -11,13 +14,13 @@ int main() {
         printf("========================================\n");
         printf("               0:Tracker\n");
         printf("========================================\n\n");
-        printf("[1] °øºÎ ½ÃÀÛ\n\n");
-        printf("[2] °øºÎ ±â·Ï\n\n");
+        printf("[1] ê³µë¶€ ì‹œìž‘\n\n");
+        printf("[2] í•™ìŠµ ê¸°ë¡\n\n");
         printf("[3] Level\n\n");
-        printf("[4] ¼³Á¤\n\n");
+        printf("[4] ì„¤ì •\n\n");
         printf("[0] Exit\n\n");
         printf("----------------------------------------\n\n");
-        printf("Select Menu >> ");
+        printf("ë©”ë‰´ ì„ íƒ>> ");
 
         if (scanf_s("%d", &menu) != 1) {
             while (getchar() != '\n');
@@ -29,10 +32,15 @@ int main() {
             break;
         }
 
-        if (menu >= 1 && menu <= 4)
-            printf("\n  Menu %d selected.\n", menu);
-        else
+       if (menu == 1) {
+            showStudy("C Programming", 60, 1930, 190, 2);
+        }
+        else if (menu >= 2 && menu <= 4) {
+                printf("\n  Menu %d selected.\n", menu);
+            }
+        else {
             printf("\n  Invalid selection. Try again.\n");
+        }
 
         printf("\n  Press Enter to return...");
         while (getchar() != '\n');
