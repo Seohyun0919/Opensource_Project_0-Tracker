@@ -38,4 +38,13 @@ typedef struct {
     int is_distract;
 } WindowLog;
 
+typedef struct {
+    int total_study_sec;
+    int total_distract_sec;
+    int total_distract_count;
+    double focus_rate;
+    int avg_focus_sec;
+    char top_distract_window[MAX_TITLE_LEN * 3 + 1];
+} AnalysisResult;
+
 #endif
