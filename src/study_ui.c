@@ -2,7 +2,7 @@
 #include <windows.h>
 #include "study_ui.h"
 
-void showStudy(const char* subject, int goal_min,
+void Study_ui(const char* subject, int goal_min,
                int study_sec, int distract_sec,
                int distract_count) {
     HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);

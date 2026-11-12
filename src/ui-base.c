@@ -33,7 +33,7 @@ int main() {
         }
 
        if (menu == 1) {
-            showStudy("C Programming", 60, 1930, 190, 2);
+            Study_ui("C Programming", 60, 1930, 190, 2);
         }
         else if (menu >= 2 && menu <= 4) {
                 printf("\n  Menu %d selected.\n", menu);
