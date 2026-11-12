@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "study_ui.h"
+#include "level_ui.h"
 #include <windows.h>
 
 int main() {
@@ -35,10 +36,20 @@ int main() {
        if (menu == 1) {
             Study_ui("C Programming", 60, 1930, 190, 2);
         }
-        else if (menu >= 2 && menu <= 4) {
-                printf("\n  Menu %d selected.\n", menu);
-            }
-        else {
+
+       else if (menu == 2) {
+            printf("\n  Menu %d selected.\n", menu);
+        }
+
+       else if (menu == 3) {
+            level_ui(1001);
+        }
+
+       else if (menu == 4) {
+            printf("\n  Menu %d selected.\n", menu);
+        }
+
+       else {
             printf("\n  Invalid selection. Try again.\n");
         }
 

@@ -13,7 +13,8 @@
                 "/Fe:${workspaceFolder}\\tracker.exe",
                 "${workspaceFolder}\\src\\ui-base.c",
                 "${workspaceFolder}\\src\\study_ui.c",
-                "${workspaceFolder}\\src\\warning.c"
+                "${workspaceFolder}\\src\\warning.c",
+                "${workspaceFolder}\\src\\level_ui.c"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
