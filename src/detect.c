@@ -7,8 +7,8 @@
 
 
 // 이탈 키워드 목록과 개수
-char distract_keywords[MAX_KEYWORDS][MAX_KEYWORD_LEN] = {"YouTube", "Instagram","Facebook"}; 
-int distract_keyword_count = 3;
+char distract_keywords[MAX_KEYWORDS][MAX_KEYWORD_LEN] = {"YouTube","카카오톡", "Instagram","Facebook"}; 
+int distract_keyword_count = 4;
 
 
 // 현재 맨 앞에 있는 창(=활성 창)의 제목을 window_title에 저장
