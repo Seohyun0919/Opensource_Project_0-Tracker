@@ -1,22 +1,28 @@
+// M1 계획·타이머. 이름·과목·목표 시간 입력 검사와 Enter/Q 타이머.
+// 결과(study_sec, goal_achieved 등)는 Session에 채워 둠. 저장은 M3 몫.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <conio.h>
+#include <windows.h>
 #include "timer.h"
+
 
 #define MIN_GOAL_MIN 1
 #define MAX_GOAL_MIN 600
 #define LINE_BUF_SIZE 256
 
-// UTF-8 한글을 고려하여 글자 수를 계산하는 함수
-int count_chars(char str[])
+// 문자열의 글자 수를 계산하는 함수
+static int count_chars(const char *str)
 {
     int count = 0;
     int i;
 
     for (i = 0; str[i] != '\0'; i++) {
-        // 한글은 3바이트이므로 첫 번째 바이트만 글자 수로 계산
-        if ((str[i] & 0xC0) != 0x80) {
+        // UTF-8 이어지는 바이트는 글자 수에서 제외
+        if (((unsigned char)str[i] & 0xC0) != 0x80) {
             count++;
         }
     }
@@ -24,36 +30,60 @@ int count_chars(char str[])
     return count;
 }
 
-// 문자열을 한 줄 입력받는 함수
-int read_line(char buf[], int size)
+// 한 줄을 입력받는 함수
+// 성공: 1, 입력 실패: 0, 입력 길이 초과: -1
+static int read_line(char buf[], int size)
 {
+    int ch;
+
     if (fgets(buf, size, stdin) == NULL) {
         return 0;
     }
 
-    // 입력받은 문자열의 줄바꿈 문자 제거
-    buf[strcspn(buf, "\n")] = '\0';
+    // 입력한 문자열에 줄바꿈이 있는지 확인
+    if (strchr(buf, '\n') == NULL && !feof(stdin)) {
+
+        // 버퍼에 남아 있는 입력 내용 제거
+        while ((ch = getchar()) != '\n' && ch != EOF) {
+        }
+
+        return -1;
+    }
+
+    // 줄바꿈 문자 제거
+    buf[strcspn(buf, "\r\n")] = '\0';
 
     return 1;
 }
 
 // 이름이나 과목명을 입력받는 함수
-void input_text(char prompt[], char out[], int max_chars)
+static void input_text(const char *prompt, char out[], int max_chars)
 {
     char line[LINE_BUF_SIZE];
     int len;
+    int result;
 
     while (1) {
         printf("%s (1~%d자): ", prompt, max_chars);
 
-        if (read_line(line, LINE_BUF_SIZE) == 0) {
+        result = read_line(line, LINE_BUF_SIZE);
+
+        // 입력 실패 시 함수 종료
+        if (result == 0) {
             out[0] = '\0';
             return;
         }
 
+        // 입력 길이가 너무 긴 경우
+        if (result == -1) {
+            printf("입력이 너무 깁니다. 다시 입력하세요.\n");
+            continue;
+        }
+
+        // 입력한 글자 수 계산
         len = count_chars(line);
 
-        // 빈 문자열 검사
+        // 빈칸 검사
         if (len == 0) {
             printf("빈칸은 입력할 수 없습니다.\n");
         }
@@ -64,14 +94,14 @@ void input_text(char prompt[], char out[], int max_chars)
         }
 
         // 배열에 저장할 수 있는 바이트 크기 검사
-        else if (strlen(line) > max_chars * 3) {
-            printf("입력한 문자열이 너무 깁니다.\n");
+        else if (strlen(line) > (size_t)max_chars * 3) {
+            printf("지원하지 않는 문자가 있습니다.\n");
         }
 
-        // 조건을 모두 만족하면 문자열 저장
+        // 모든 조건을 만족하면 문자열 저장
         else {
             strcpy(out, line);
-            break;
+            return;
         }
     }
 }
@@ -94,13 +124,22 @@ int input_goal_min(void)
     char line[LINE_BUF_SIZE];
     char *end;
     long value;
+    int result;
 
     while (1) {
         printf("목표 시간 (%d~%d분): ", MIN_GOAL_MIN, MAX_GOAL_MIN);
 
-        // 입력이 끊기면 최솟값을 돌려주고 종료
-        if (read_line(line, LINE_BUF_SIZE) == 0) {
+        result = read_line(line, LINE_BUF_SIZE);
+
+        // 입력 실패 시 최솟값을 돌려주고 종료
+        if (result == 0) {
             return MIN_GOAL_MIN;
+        }
+
+        // 입력 길이가 너무 긴 경우
+        if (result == -1) {
+            printf("입력이 너무 깁니다. 다시 입력하세요.\n");
+            continue;
         }
 
         value = strtol(line, &end, 10);
@@ -115,7 +154,7 @@ int input_goal_min(void)
             printf("%d~%d분 사이로 입력하세요.\n", MIN_GOAL_MIN, MAX_GOAL_MIN);
         }
 
-        // 조건을 모두 만족하면 값을 돌려줌
+        // 모든 조건을 만족하면 값을 돌려줌
         else {
             return (int)value;
         }
@@ -123,7 +162,7 @@ int input_goal_min(void)
 }
 
 // 오늘 날짜를 YYYY-MM-DD 형태로 만드는 함수
-void get_today(char date[])
+static void get_today(char date[])
 {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
@@ -141,4 +180,55 @@ void input_plan(Session *rec)
 
     // M3 함수가 합쳐지기 전까지 세션 번호는 0으로 둠
     rec->session_num = 0;
+}
+
+// 타이머를 실행하는 함수 (Enter로 시작, Q로 종료)
+void run_timer(Session *rec)
+{
+    int ch;
+    int has_key;
+    int elapsed = 0;
+    int printed_sec = -1;
+    time_t start;
+    time_t now;
+
+    printf("\nEnter를 누르면 시작합니다. (종료: Q)\n");
+
+    // Enter 키를 누를 때까지 대기
+    ch = _getch();
+    while (ch != '\r') {
+        ch = _getch();
+    }
+
+    start = time(NULL);
+
+    while (1) {
+        // 키가 눌렸는지 확인 (눌리지 않았으면 기다리지 않고 넘어감)
+        has_key = _kbhit();
+
+        if (has_key != 0) {
+            ch = _getch();
+
+            // Q 키를 누르면 타이머 종료
+            if (ch == 'q' || ch == 'Q') {
+                break;
+            }
+        }
+
+        // 시작한 뒤 지난 시간(초) 계산
+        now = time(NULL);
+        elapsed = (int)difftime(now, start);
+
+        // 초가 바뀐 경우에만 화면 갱신
+        if (elapsed != printed_sec) {
+            printf("\r경과 시간: %02d:%02d   ", elapsed / 60, elapsed % 60);
+            fflush(stdout);
+            printed_sec = elapsed;
+        }
+
+        // CPU 사용을 줄이기 위해 0.1초 대기
+        Sleep(100);
+    }
+
+    printf("\n\n종료되었습니다.\n");
 }
