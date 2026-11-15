@@ -170,6 +170,83 @@ void save_keywords(void)
     fclose(fp);
 }
 
+// 키워드 목록 출력
+void print_keywords(void)
+{
+    int i;
+
+    printf("\n[이탈 키워드 목록]\n");
+
+    for (i = 0; i < distract_keyword_count; i++)
+    {
+        if (i < DEFAULT_KEYWORD_COUNT)
+        {
+            printf(" %d. %s (기본 이탈 키워드)\n", i+1, distract_keywords[i]);
+        }
+
+        else 
+        {
+            printf(" %d. %s\n", i+1, distract_keywords[i]);
+        }
+    }
+}
+
+// 단어가 목록의 몇 번째 칸에 있는지 찾음
+// 찾으면 칸 번호, 없다면 -1
+int find_keyword(char word[])
+{
+    int i;
+
+    for (i = 0; i < distract_keyword_count; i++)
+    {
+        if (strcmp(distract_keywords[i], word) == 0)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
+// 사용자가 키워드를 입력 > 목록에 추가 
+void add_keyword(void)
+{
+    char word[MAX_KEYWORD_LEN];
+
+    printf("키워드 추가>> ");
+    fgets(word, MAX_KEYWORD_LEN, stdin);
+    remove_newline(word);
+
+    // 아무것도 입력받지 않았으면 추가하지 않음 
+    if (word[0] == '\0')
+    {
+        printf("키워드가 입력되지 않았습니다.\n");
+        return;
+    }
+
+    // 이미 있는 키워드라면 추가하지 않음 
+    if (has_keyword(word) == 1)
+    {
+        printf("이미 있는 키워드 입니다.\n");
+        return;
+    }
+
+    // 목록이 가득 찼다면 추가하지 않음 
+    if (distract_keyword_count >= MAX_KEYWORDS)
+    {
+        printf("목록이 가득 찼습니다.\n");
+        return;
+    }
+
+    // 마지막 키워드 다음 칸에 새로운 키워드를 넣고 키워드 개수를 하나 늘림
+    strcpy(distract_keywords[distract_keyword_count], word);
+    distract_keyword_count++;
+    save_keywords();
+
+    printf(" '%s'을 추가하였습니다.\n", word);
+}
+
+
 // 시간을 초로 받은 후에 "n시간 n분 n초" 형식으로 출력
 void print_time(int total_sec)
 {
