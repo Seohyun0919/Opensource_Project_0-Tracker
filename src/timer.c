@@ -191,6 +191,7 @@ void run_timer(Session *rec)
     int printed_sec = -1;
     time_t start;
     time_t now;
+    int goal_sec;
 
     printf("\nEnter를 누르면 시작합니다. (종료: Q)\n");
 
@@ -228,6 +229,24 @@ void run_timer(Session *rec)
 
         // CPU 사용을 줄이기 위해 0.1초 대기
         Sleep(100);
+    }
+
+    // 목표 시간(분)을 초로 바꿔서 비교
+    goal_sec = rec->goal_min * 60;
+
+    // 공부한 시간은 경과 시간 전체로 저장 (이탈 시간 처리는 M2 연결 후 정함)
+    rec->study_sec = elapsed;
+    rec->distract_sec = 0;
+    rec->distract_count = 0;
+
+    // 목표 시간과 같아도 달성으로 봄
+    if (rec->study_sec >= goal_sec) {
+        rec->goal_achieved = 1;
+    }
+
+    // 목표 시간보다 적게 공부한 경우
+    else {
+        rec->goal_achieved = 0;
     }
 
     printf("\n\n종료되었습니다.\n");
