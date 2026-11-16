@@ -4,30 +4,33 @@
 #include "detect.h"  // 직접 만든 헤더파일
 #include <conio.h>   // 키보드 입력을 확인해주는 _kbhit, _getch를 사용하기 위해서
 
+#define KEYWORD_SIZE (MAX_KEYWORD_LEN * 3 + 1)
+#define TITLE_SIZE (MAX_TITLE_LEN * 3 + 1)
+
 // 이탈 키워드 목록과 개수
-char distract_keywords[MAX_KEYWORDS][MAX_KEYWORD_LEN];
+char distract_keywords[MAX_KEYWORDS][KEYWORD_SIZE];
 int distract_keyword_count = 0;
-char default_keywords[DEFAULT_KEYWORD_COUNT][MAX_KEYWORD_LEN] = {"YouTube", "카카오톡", "Instagram", "Facebook"};
+char default_keywords[DEFAULT_KEYWORD_COUNT][KEYWORD_SIZE] = {"YouTube", "카카오톡", "Instagram", "Facebook"};
 
 // 현재 맨 앞에 있는 창(=활성 창)의 제목을 window_title에 저장
 // if.제목을 제대로 읽지 못함 -> 빈 문자열
 void get_window_title(char window_title[])
 {
     // 한글도 담을 수 있는 유니코드 문자 배열
-    wchar_t wide_title[300];
+    wchar_t wide_title[MAX_TITLE_LEN+1];
 
     // 제목을 못 읽을 때를 위한 빈 문자열
     window_title[0] = '\0';
 
     // GetForegroundWindow() 맨 앞에 있는 창을 찾음
     // GetWindowTextW() 창의 제목을 읽고, 읽은 글자 수를 다시 돌려줌 (0이면 실패임)
-    if (GetWindowTextW(GetForegroundWindow(), wide_title, 300) == 0)
+    if (GetWindowTextW(GetForegroundWindow(), wide_title, MAX_TITLE_LEN + 1) == 0)
     {
         return;
     }
 
     // 한글이 깨지지 않게 하기 위해서 UTF-8문자열로 바꿈
-    WideCharToMultiByte(CP_UTF8, 0, wide_title, -1, window_title, MAX_TITLE_LEN, NULL, NULL);
+    WideCharToMultiByte(CP_UTF8, 0, wide_title, -1, window_title, TITLE_SIZE, NULL, NULL);
 }
 
 // 문자열의 영문 대문자를 소문자로 변환
@@ -48,8 +51,8 @@ void make_lower(char text[])
 // 제목과 키워드를 모두 소문자로 바꿔서 비교함
 int is_distract_title(char window_title[])
 {
-    char title[MAX_TITLE_LEN];
-    char keyword[MAX_KEYWORD_LEN];
+    char title[TITLE_SIZE];
+    char keyword[KEYWORD_SIZE];
     int i;
 
     // 원본 제목은 출력할 때 필요. 복사본을 소문자로 변환
@@ -76,8 +79,8 @@ int is_distract_title(char window_title[])
 // 찾으면 키워드 번호, 찾지 못하면 -1
 int find_distract_index(char window_title[])
 {
-    char title[MAX_TITLE_LEN];
-    char keyword[MAX_KEYWORD_LEN];
+    char title[TITLE_SIZE];
+    char keyword[KEYWORD_SIZE];
     int i;
 
     strcpy(title, window_title);
@@ -132,7 +135,7 @@ int has_keyword(char word[])
 void load_keywords(void)
 {
     FILE *fp;
-    char line[MAX_KEYWORD_LEN];
+    char line[KEYWORD_SIZE];
     int i;
 
     // 기본 키워드 4개를 항상 먼저 넣음
@@ -236,10 +239,10 @@ int find_keyword(char word[])
 // 사용자가 키워드를 입력 > 목록에 추가 
 void add_keyword(void)
 {
-    char word[MAX_KEYWORD_LEN];
+    char word[KEYWORD_SIZE];
 
     printf("키워드 추가>> ");
-    fgets(word, MAX_KEYWORD_LEN, stdin);
+    fgets(word, KEYWORD_SIZE, stdin);
     remove_newline(word);
 
     // 아무것도 입력받지 않았으면 추가하지 않음 
@@ -275,12 +278,12 @@ void add_keyword(void)
 // 키워드를 입력 받은 후에 목록에서 삭제
 void remove_keyword(void)
 {
-    char word[MAX_KEYWORD_LEN];
+    char word[KEYWORD_SIZE];
     int index; // 지우려는 키워드가 있는 칸 인덱스 
     int i;
 
     printf("키워드 삭제>> ");
-    fgets(word, MAX_KEYWORD_LEN, stdin);
+    fgets(word, KEYWORD_SIZE, stdin);
     remove_newline(word);
 
     index = find_keyword(word);
@@ -374,7 +377,7 @@ void print_time(int total_sec)
 
 int main(void)
 {
-    char window_title[MAX_TITLE_LEN];
+    char window_title[TITLE_SIZE];
     int study_sec = 0;      // 공부한 시간 (초)
     int distract_sec = 0;   // 이탈한 시간 (초)
     int distract_count = 0; // 이탈한 횟수
