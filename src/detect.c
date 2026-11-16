@@ -247,6 +247,85 @@ void add_keyword(void)
 }
 
 
+// 키워드를 입력 받은 후에 목록에서 삭제
+void remove_keyword(void)
+{
+    char word[MAX_KEYWORD_LEN];
+    int index; // 지우려는 키워드가 있는 칸 인덱스 
+    int i;
+
+    printf("키워드 삭제>> ");
+    fgets(word, MAX_KEYWORD_LEN, stdin);
+    remove_newline(word);
+
+    index = find_keyword(word);
+
+    // 목록에 키워드가 없으면 삭제하지 않음
+    if (index == -1)
+    {
+        printf("키워드가 목록에 없습니다.\n");
+        return;
+    }
+
+    // 0~3번째 인덱스는 기본 키워드이므로 삭제할 수 없음 
+    if (index < DEFAULT_KEYWORD_COUNT)
+    {
+        printf("기본 키워드는 삭제할 수 없습니다.\n");
+        return;
+    }
+
+    // 지우려는 킨부터 뒤의 키워드를 하나씩 앞으로 당겨옴
+    // ex. [a][b][c][d][e] > c 삭제 > [a][b][d][e]
+    for (i = index; i < distract_keyword_count - 1; i++)
+    {
+        strcpy(distract_keywords[i], distract_keywords[i+1]);
+    }
+
+    // 개수를 하나 줄임 -> 파일에 저장 
+    distract_keyword_count --;
+    save_keywords();
+
+    printf("'%s' 키워드를 삭제했습니다.\n", word);
+
+}
+
+
+// 키워드 관리하는 메뉴
+// 1을 누름: 추가, 2를 누름: 삭제, 3을 누름: 메뉴 종료 및 기록 시작
+void keyword_menu(void)
+{
+    char menu[10];
+
+    while(1)
+    {
+        print_keywords();
+        printf("1= 추가 | 2= 삭제 | 3= 메뉴 종료 및 기록 시작\n");
+        printf("선택하세요>> ");
+
+        fgets(menu, 10, stdin);
+
+        if (menu[0] == '1')
+        {
+            add_keyword();
+        }
+        
+        else if (menu[0] == '2')
+        {
+            remove_keyword();
+        }
+
+        else if (menu[0] == '3')
+        {
+            return;
+        }
+
+        else
+        {
+            printf("잘못된 선택입니다. 1,2,3 중에서 선택 해주세요.\n");
+        }
+    }
+}
+
 // 시간을 초로 받은 후에 "n시간 n분 n초" 형식으로 출력
 void print_time(int total_sec)
 {
@@ -277,8 +356,11 @@ int main(void)
     int was_distract = 0;   // 바로 전에 이탈 중이었으면 1
     char key;
 
-    SetConsoleOutputCP(CP_UTF8);
-    load_keywords();
+    SetConsoleOutputCP(CP_UTF8); // 한글을 출력
+    SetConsoleCP(CP_UTF8); // 한글을 입력 
+    load_keywords(); // 학습 이탈 키워드
+    keyword_menu(); // 학습 이탈 키워드 추가 및 삭제 
+
     printf("!!기록 시작!! (끝내려면 창에서 Q를 누르세요) \n\n");
 
     while (1)
