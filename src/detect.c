@@ -71,6 +71,31 @@ int is_distract_title(char window_title[])
     return 0;
 }
 
+
+// 창 제목에 들어 있는 이탈 키워드가 몇 번째 키워드인지 찾음
+// 찾으면 키워드 번호, 찾지 못하면 -1
+int find_distract_index(char window_title[])
+{
+    char title[MAX_TITLE_LEN];
+    char keyword[MAX_KEYWORD_LEN];
+    int i;
+
+    strcpy(title, window_title);
+    make_lower(title);
+
+    for (i = 0; i < distract_keyword_count; i++)
+    {
+        strcpy(keyword, distract_keywords[i]);
+        make_lower(keyword);
+
+        if(strstr(title, keyword) != NULL)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
 // fgets로 한 줄을 읽으면 맨 마지막에 줄바꿈 문자가 같이 들어옴
 // -> 문자열 끝의 줄바꿈 문자를 지움
 void remove_newline(char text[])
@@ -355,6 +380,9 @@ int main(void)
     int distract_count = 0; // 이탈한 횟수
     int was_distract = 0;   // 바로 전에 이탈 중이었으면 1
     char key;
+    int keyword_sec[MAX_KEYWORDS] = {0}; // 키워드마다 머무른 시간
+    int index = 0; // 현재 걸린 키워드 인덱스 (없다면 -1)
+    int i = 0; 
 
     SetConsoleOutputCP(CP_UTF8); // 한글을 출력
     SetConsoleCP(CP_UTF8); // 한글을 입력 
@@ -367,19 +395,23 @@ int main(void)
     {
         get_window_title(window_title);
 
-        if (is_distract_title(window_title))
+        // 몇 번째 이탈 키워드에 걸렸는지 찾음 (없다면 -1)
+        index = find_distract_index(window_title);
+
+        if (index != -1)
         {
             distract_sec++;
+            keyword_sec[index] ++; 
 
-            // 학습 > 이탈로 바뀌었을때 횟수를 셈 + 출력
+            // 학습 > 이탈로 바뀌었을 때 횟수 출력 
             if (was_distract == 0)
             {
-                distract_count++;
-                printf("[이탈 시작] %s\n", window_title);
+                distract_count ++;
+                printf("[이탈 시작]%s\n", window_title);
             }
-
             was_distract = 1;
         }
+
         else
         {
             study_sec++;
@@ -421,6 +453,26 @@ int main(void)
     printf("\n");
 
     printf("이탈 횟수 : %d회\n", distract_count);
+
+    printf("\n[어플별 머무른 시간]\n");
+
+    for (i = 0; i < distract_keyword_count; i++)
+    {
+        // 머문 시간이 0초보다 큰 어플만 출력함 
+        if (keyword_sec[i] > 0)
+        {
+            printf("%s: ", distract_keywords[i]);
+            print_time(keyword_sec[i]);
+            printf("\n");
+        }
+    }
+
+    // 이탈한 어플이 없을때 
+    if (distract_sec == 0)
+    {
+        printf("학습에 집중하였습니다!\n");
+    }
+
     printf("======================\n");
 
     return 0;
