@@ -138,13 +138,19 @@ void load_keywords(void)
     char line[KEYWORD_SIZE];
     int i;
 
-    // 기본 키워드 4개를 항상 먼저 넣음
+    // default_keywords에 있는 기본 키워드 4개를
+    // distract_keywords로 하나씩 옮김
     for (i = 0; i < DEFAULT_KEYWORD_COUNT; i++)
     {
+        // i번째 키워드도 똑같이 옮겨서 씀 
         strcpy(distract_keywords[i], default_keywords[i]);
     }
+    // 지금 상자에 키워드 가 4개 들어있다고 기록 
+    // 지금 빈칸 수를 세야 나중에 사용자가 키워드 직접 추가할때 다음 빈칸인 4번 칸에 들어감 
     distract_keyword_count = DEFAULT_KEYWORD_COUNT;
 
+
+    
     // 사용자가 추가한 이탈 키워드를 파일에서 읽음
     // 파일에 없다면 기본 4개만 이탈 키워드가 됨
     fp = fopen(FILE_DISTRACT_KEYWORDS, "r");
@@ -156,9 +162,10 @@ void load_keywords(void)
     // 파일을 한 줄 씩 읽으면서 목록에 추가
     while (fgets(line, sizeof(line), fp) != NULL)
     {
+        // 꺼낸 줄 끝에 줄바꿈 엔터가 붙는데  지움 
         remove_newline(line);
 
-        // 목록이 다 차면 읽는 것을 멈춤
+        // 목록(20개)이 다 차면 읽는 것을 멈춤
         if (distract_keyword_count >= MAX_KEYWORDS)
         {
             break;
@@ -167,7 +174,9 @@ void load_keywords(void)
         // 줄이 비어있지 않고, 아직 키워드가 없다면
         if (line[0] != '\0' && has_keyword(line) == 0)
         {
+            // 다음 빈칸에 키워드를 넣음 
             strcpy(distract_keywords[distract_keyword_count], line);
+            // 상자 안에 키워드를 하나 늘림 
             distract_keyword_count++;
         }
     }
@@ -382,7 +391,7 @@ int main(void)
     int distract_sec = 0;   // 이탈한 시간 (초)
     int distract_count = 0; // 이탈한 횟수
     int was_distract = 0;   // 바로 전에 이탈 중이었으면 1
-    char key;
+    int key;
     int keyword_sec[MAX_KEYWORDS] = {0}; // 키워드마다 머무른 시간
     int index = 0; // 현재 걸린 키워드 인덱스 (없다면 -1)
     int i = 0; 
@@ -431,7 +440,15 @@ int main(void)
         if (_kbhit())
         {
             key = _getch();
-            if (key == 'q' || key == 'Q')
+
+            // PgDn을 누르면 Q로 잘못 인식돼서 꺼짐
+            // PgDn같은 특수 키는 무시함 
+            if (key == 0 || key == 0xE0)
+            {
+                _getch();
+            }
+            
+            else if (key == 'q' || key == 'Q')
             {
                 break;
             }
