@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <windows.h>
+#include <conio.h>
 #include "study_ui.h"
 #include "level_ui.h"
 #include "warning.h"
-#include <windows.h>
+#include "result_ui.h"
+
 
 int main() {
     SetConsoleOutputCP(65001);
@@ -35,9 +38,16 @@ int main() {
         }
 
        if (menu == 1) {
-            Study_ui("C Programming", 60, 1930, 190, 2);
+            Study_ui("C Programming", 60, 1930, 190, 2);// 학습 과목, 목표 시간(분), 순수 공부 시간(초), 이탈 시간(초), 이탈 횟수
             Sleep(3000);
             warning();
+            while (1) {
+                int key = _getch();
+                if (key == 'q' || key == 'Q') {
+                    result_ui("C Programming", 60,1930, 190, 2,320, 30, 0, 1291); // 학습 과목, 목표 시간, 순수 공부 시간, 이탈 시간, 이탈 횟수, 획득 포인트, 감점 포인트, 보너스 포인트, 누적 포인트
+                    break;
+                }
+            }
         }
 
        else if (menu == 2) {
@@ -45,7 +55,7 @@ int main() {
         }
 
        else if (menu == 3) {
-            level_ui(1001);
+            level_ui(1001);// 누적 포인트
         }
 
        else if (menu == 4) {

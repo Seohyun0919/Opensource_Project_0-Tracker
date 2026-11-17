@@ -39,7 +39,7 @@ void Study_ui(const char* subject, int goal_min,
     printf("학습 목표 시간 : %d 분\n\n", goal_min);
 
     printf("목표 달성률 : %d%%\n  [", percent);
-
+    //달성율을 막대 그래프로 표기
     SetConsoleTextAttribute(h, 10);
     for (int i = 0; i < 30; i++)
         printf(i < percent * 30 / 100 ? "#" : "-");
@@ -47,7 +47,7 @@ void Study_ui(const char* subject, int goal_min,
 
     printf("]\n\n");
     printf("----------------------------------------\n");
-    printf("종료하려면 Q 키를 누르세요.\n");
+    printf("[P] 일시 정지       [Q] 공부 종료\n");
     printf("========================================\n");
     fflush(stdout);
 }
