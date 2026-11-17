@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "study_ui.h"
 #include "level_ui.h"
+#include "warning.h"
 #include <windows.h>
 
 int main() {
@@ -35,6 +36,8 @@ int main() {
 
        if (menu == 1) {
             Study_ui("C Programming", 60, 1930, 190, 2);
+            Sleep(3000);
+            warning();
         }
 
        else if (menu == 2) {

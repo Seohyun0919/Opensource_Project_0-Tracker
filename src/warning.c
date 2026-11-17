@@ -1,20 +1,38 @@
-#include <stdio.h>
+
 #include <windows.h>
 #include "warning.h"
 
-void showWarning(const char* window_title,
-                 const char* keyword) {
-    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+#pragma comment(lib, "user32.lib")
+static volatile LONG warning_open = 0;
 
-    SetConsoleTextAttribute(h, 12);
+static DWORD WINAPI warningThread(LPVOID arg) {
+    MessageBoxW(
+        NULL,
+        L"학습 이탈이 감지되었습니다!\n"
+        L"공부에 다시 집중하세요.",
+        L"0:Tracker WARNING",
+        MB_OK | MB_ICONWARNING | MB_TOPMOST
+    );
 
-    printf("\n========================================\n");
-    printf("               WARNING!\n");
-    printf("========================================\n\n");
-    printf("  학습 이탈이 감지되었습니다.\n\n");
-    printf("  감지된 창 : %s\n", window_title);
-    printf("  감지 키워드 : %s\n", keyword);
-    printf("========================================\n");
+    InterlockedExchange(&warning_open, 0);
+    return 0;
+}
 
-    SetConsoleTextAttribute(h, 7);
+void warning(void) {
+    HANDLE thread;
+
+    // 경고창 중복 생성 방지
+    if (InterlockedCompareExchange(
+        &warning_open, 1, 0) != 0)
+        return;
+
+    thread = CreateThread(
+        NULL, 0, warningThread,
+        NULL, 0, NULL
+    );
+
+    if (thread)
+        CloseHandle(thread);
+    else
+        InterlockedExchange(&warning_open, 0);
 }
