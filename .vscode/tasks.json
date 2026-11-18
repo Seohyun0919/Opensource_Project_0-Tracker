@@ -2,18 +2,20 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build-ui",
+            "label": "build-tracker",
             "type": "shell",
-            "command": "cl",
+            "command": "gcc",
             "args": [
-                "/nologo",
-                "/Zi",
-                "/utf-8",
-                "/Fe:${workspaceFolder}\\tracker.exe",
-                "${workspaceFolder}\\src\\ui-base.c",
+                "-g",
+                "-std=c11",
+                "-I${workspaceFolder}\\src",
+                "-o",
+                "${workspaceFolder}\\tracker.exe",
+                "${workspaceFolder}\\src\\main.c",
+                "${workspaceFolder}\\src\\timer.c",
+                "${workspaceFolder}\\src\\detect.c",
                 "${workspaceFolder}\\src\\study_ui.c",
-                "${workspaceFolder}\\src\\warning.c",
-                "${workspaceFolder}\\src\\level_ui.c"
+                "${workspaceFolder}\\src\\warning.c"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -22,27 +24,7 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "C/C++: gcc build active file",
-            "type": "cppbuild",
-            "command": "gcc",
-            "args": [
-                "-fdiagnostics-color=always",
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
-            ],
-            "options": {
-                "cwd": "${fileDirname}"
-            },
-            "problemMatcher": ["$gcc"],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
+            "problemMatcher": "$gcc"
         }
     ]
 }
