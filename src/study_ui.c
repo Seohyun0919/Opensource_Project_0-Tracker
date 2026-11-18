@@ -5,6 +5,7 @@
 #include "study_ui.h"
 #include "timer.h"
 
+
 static void draw_study(const char* subject, int goal_min,
                int study_sec, int distract_sec,
                int distract_count) {
@@ -55,7 +56,7 @@ static void draw_study(const char* subject, int goal_min,
     fflush(stdout);
 }
 
-void Study_ui(Session* rec)
+void study_ui(Session* rec)
 {
     TimerState timer;
     int last_sec = -1;
@@ -100,11 +101,14 @@ void Study_ui(Session* rec)
             break;
         }
 
+        int elapsed = rec->study_sec + rec->distract_sec;
+
         if (rec->study_sec != last_sec) {
             draw_study(rec->subject, rec->goal_min,
                        rec->study_sec, rec->distract_sec,
                        rec->distract_count);
-            last_sec = rec->study_sec;
+                 
+            last_sec = elapsed;
         }
         Sleep(100);
     }

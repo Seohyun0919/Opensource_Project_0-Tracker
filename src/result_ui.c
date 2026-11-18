@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <windows.h>
 #include "result_ui.h"
+#include "keyword.h"
+#include "detect.h"
 
 void result_ui(const char* subject, int goal_min,
                int study_sec, int distract_sec,
@@ -47,9 +49,25 @@ void result_ui(const char* subject, int goal_min,
     printf("학습 이탈 횟수 : %d 회\n", distract_count);
 
     SetConsoleTextAttribute(h, 10);
-    printf("집중률 : %.1f%%\n ", focus_rate);
+    printf("집중률 : %.1f%%\n\n", focus_rate);
 
     SetConsoleTextAttribute(h, 7);
+    printf("----------- 키워드별 체류 시간 ----------\n\n");
+
+    for (int i = 0; i < keyword_count(); i++)
+    {
+        int sec = get_keyword_sec(i);
+
+        if (sec > 0)
+            printf("%s : %02d:%02d:%02d\n",
+                keyword_at(i),
+                sec / 3600, sec / 60 % 60, sec % 60);
+    }
+
+    if (distract_sec == 0)
+        printf("학습 이탈 기록이 없습니다.\n");
+
+    printf("\n");
     printf("------------- POINT REPORT -------------\n\n");
 
     SetConsoleTextAttribute(h, 10);

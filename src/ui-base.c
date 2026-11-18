@@ -5,12 +5,14 @@
 #include "level_ui.h"
 #include "result_ui.h"
 #include "timer.h"
+#include "keyword.h"
 
 
 int main() {
     SetConsoleOutputCP(65001);
     SetConsoleCP(65001);
     int menu;
+    load_keywords();
 
     while (1) {
         system("cls");
@@ -21,7 +23,7 @@ int main() {
         printf("[1] 공부 시작\n\n");
         printf("[2] 학습 기록\n\n");
         printf("[3] Level\n\n");
-        printf("[4] 설정\n\n");
+        printf("[4] 키워드 설정\n\n");
         printf("[0] Exit\n\n");
         printf("----------------------------------------\n\n");
         printf("메뉴 선택>> ");
@@ -38,7 +40,7 @@ int main() {
         }
 
         if (menu == 0) {
-            printf("\n  Goodbye! Stay focused!\n");
+            printf("\n  종료합니다 \n");
             break;
         }
 
@@ -51,10 +53,8 @@ int main() {
                 break;
             }
 
-            Study_ui(&rec);
-            result_ui(rec.subject, rec.goal_min, rec.study_sec,
-                      rec.distract_sec, rec.distract_count,
-                      320, 30, 0, 1291); // 포인트는 테스트 값
+            study_ui(&rec);
+            result_ui(rec.subject, rec.goal_min, rec.study_sec,rec.distract_sec, rec.distract_count,320, 30, 0, 1291); // 포인트는 테스트 값
         }
 
        else if (menu == 2) {
@@ -66,7 +66,7 @@ int main() {
         }
 
        else if (menu == 4) {
-            printf("\n  Menu %d selected.\n", menu);
+            keyword();            
         }
 
        else {

@@ -15,7 +15,10 @@
                 "${workspaceFolder}\\src\\timer.c",
                 "${workspaceFolder}\\src\\warning.c",
                 "${workspaceFolder}\\src\\level_ui.c",
-                "${workspaceFolder}\\src\\result_ui.c"
+                "${workspaceFolder}\\src\\result_ui.c",
+                "${workspaceFolder}\\src\\detect.c",
+                "${workspaceFolder}\\src\\keyword.c",
+                "user32.lib"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
