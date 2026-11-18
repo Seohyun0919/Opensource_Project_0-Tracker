@@ -12,8 +12,5 @@ int has_keyword(char word[]);
 void load_keywords(void);
 void save_keywords(void);
 
-// 키워드 추가·삭제 메뉴 (M8 메인 메뉴에서 부름)
-void keyword_menu(void);
-
 
 #endif
