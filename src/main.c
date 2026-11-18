@@ -14,6 +14,9 @@
 
 #define MAX_LIST 100
 
+// detect.c의 키워드 추가·삭제 메뉴. detect.h에 선언이 없는 버전과도 같이 빌드되도록 여기서도 선언함
+void keyword_menu(void);
+
 // 초를 HH:MM:SS 형태로 출력
 static void print_hms(int sec)
 {
@@ -151,6 +154,9 @@ static void menu_keywords(void)
 {
     system("cls");
     print_banner();
+
+    // keyword_menu의 3번은 "메뉴 종료"라서 누르면 이 메인 메뉴로 돌아옴
+    printf("[키워드 관리] 3번을 누르면 메인 메뉴로 돌아갑니다.\n");
 
     keyword_menu();
 }
