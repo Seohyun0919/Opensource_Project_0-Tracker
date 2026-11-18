@@ -114,6 +114,23 @@ void remove_newline(char text[])
         }
     }
 }
+
+
+// 기본 키워드 중 하나인지 확인
+// 기본 키워드면 1, 기본 키워드가 아니면 0
+int is_default_keyword(char word[])
+{
+    int i;
+
+    for (i = 0; i < DEFAULT_KEYWORD_COUNT; i++)
+    {
+        if (strcmp(default_keywords[i], word) == 0)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
 // 목록에 키워드가 있는지 없는지 확인
 // 목록에 있는 키워드면 1, 목록에 없는 키워드면 0
 int has_keyword(char word[])
@@ -198,10 +215,17 @@ void save_keywords(void)
         return;
     }
 
-    for (i = DEFAULT_KEYWORD_COUNT; i < distract_keyword_count; i++)
+    // 0번 칸부터 끝까지 모두 확인
+    // 기본 키워드를 지우면 칸이 앞으로 당겨지기 때문에 0~3번째 칸이 기본 키워드가 아닐 수도 있음  
+    for (i = 0; i < distract_keyword_count; i++)
     {
-        // 한 줄에 키워드를 하나씩 사용함
-        fprintf(fp, "%s\n", distract_keywords[i]);
+        // 기본 키워드는 파일에 저장X
+        // 프로그램을 다시 실행할 때 기본 키워드는 다시 나와야 하기 때문임
+        if (is_default_keyword(distract_keywords[i]) == 0)
+        {
+            // 한 줄에 키워드를 하나씩 사용 
+            fprintf(fp, "%s\n", distract_keywords[i]);
+        }
     }
 
     fclose(fp);
@@ -216,7 +240,7 @@ void print_keywords(void)
 
     for (i = 0; i < distract_keyword_count; i++)
     {
-        if (i < DEFAULT_KEYWORD_COUNT)
+        if (is_default_keyword(distract_keywords[i]) == 1)
         {
             printf(" %d. %s (기본 이탈 키워드)\n", i+1, distract_keywords[i]);
         }
@@ -228,19 +252,30 @@ void print_keywords(void)
     }
 }
 
-// 단어가 목록의 몇 번째 칸에 있는지 찾음
-// 찾으면 칸 번호, 없다면 -1
+// 사용자가 입력한 단어가 상자(distract_keywords)의 몇 번째 칸에 있는지 찾아줌  
+// 찾는다면 > 그 칸의 번호를 돌려줌 
+// 못 찾는다면 > -1을 돌려줌 (왜냐면 -1은 목록에 없는걸 뜻함)
+// 흐름 예시: [0번째 칸] 유튜브 / [1번째 칸] 카카오톡 / [2번째 칸] 네이버
+//           네이버는 몇 번째 칸인가? > 0번칸 아님 > 1번칸 아님 > 2번칸 맞음 > 2를 알려줌 
+//           인스타는 몇 번째 칸인가? > 0번칸 아님 > 1번칸 아님 > 2번칸 아님 > -1을 알려줌 
 int find_keyword(char word[])
 {
     int i;
 
+    // 0번 칸부터 마지막 키워드가 있는 칸까지 하나씩 확인함
+    // distract_keyword_count는 지금 상자에 있는 키워드 개수를 뜻함 
     for (i = 0; i < distract_keyword_count; i++)
     {
+        // strcmp를 사용해서 두 문자열이 똑같다면 0을 돌려줌
+        // i번 칸의 키워드와 입력한 단어가 같다면 
         if (strcmp(distract_keywords[i], word) == 0)
         {
+            // 칸의 번호를 돌려주고 함수를 끝냄
             return i;
         }
     }
+    // 반복문 다 했는데도 못 찾으면 
+    // 목록에 없기 때문에 -1을 돌려줌 
     return -1;
 }
 
@@ -248,10 +283,13 @@ int find_keyword(char word[])
 // 사용자가 키워드를 입력 > 목록에 추가 
 void add_keyword(void)
 {
+    // 사용자가 입력한 키워드를 잠시 담아두는 곳 
     char word[KEYWORD_SIZE];
 
     printf("키워드 추가>> ");
     fgets(word, KEYWORD_SIZE, stdin);
+
+    // 입력할 때 누른 엔터 지움
     remove_newline(word);
 
     // 아무것도 입력받지 않았으면 추가하지 않음 
@@ -293,21 +331,17 @@ void remove_keyword(void)
 
     printf("키워드 삭제>> ");
     fgets(word, KEYWORD_SIZE, stdin);
+
+    // 입력할 때 누른 엔터 지움 
     remove_newline(word);
 
+    // 키워드가 몇 번째 칸에 있는지 찾음 
     index = find_keyword(word);
 
     // 목록에 키워드가 없으면 삭제하지 않음
     if (index == -1)
     {
         printf("키워드가 목록에 없습니다.\n");
-        return;
-    }
-
-    // 0~3번째 인덱스는 기본 키워드이므로 삭제할 수 없음 
-    if (index < DEFAULT_KEYWORD_COUNT)
-    {
-        printf("기본 키워드는 삭제할 수 없습니다.\n");
         return;
     }
 
@@ -323,6 +357,11 @@ void remove_keyword(void)
     save_keywords();
 
     printf("'%s' 키워드를 삭제했습니다.\n", word);
+
+    if (is_default_keyword(word) == 1)
+    {
+        printf("(기본 키워드는 프로그램을 다시 실행하면 다시 추가 됩니다.)\n");
+    }
 
 }
 
@@ -366,9 +405,9 @@ void keyword_menu(void)
 // 시간을 초로 받은 후에 "n시간 n분 n초" 형식으로 출력
 void print_time(int total_sec)
 {
-    int hour = total_sec / 3600;
-    int min = (total_sec % 3600) / 60;
-    int sec = total_sec % 60;
+    int hour = total_sec / 3600; // 1시간 = 3600초 > 3600으로 나눈 몫 = 몇 시간 
+    int min = (total_sec % 3600) / 60; // 1분 = 60초 > 3600으로 나눈 나머지 = 시간을 빼고 남은 초를 60으로 나눔 = 몇 분  
+    int sec = total_sec % 60; // 60으로 나눈 나머지 = 초 
 
     if (hour > 0)
     {
