@@ -14,7 +14,8 @@ int input_goal_min(void);
 void input_plan(Session *rec);
  
 // 반드시 input_plan 다음에 부를 것 (goal_min이 있어야 달성 판정함)
-// Q로 끝나면 study_sec, goal_achieved를 채워 돌아옴
+// 1초마다 창 제목을 확인해 학습 중 화면을 갱신함
+// Q로 끝나면 study_sec, distract_sec, distract_count, goal_achieved를 채워 돌아옴
 void run_timer(Session *rec);
  
 #endif
