@@ -423,9 +423,6 @@ void print_time(int total_sec)
     }
 }
 
-// 단독 테스트용 main. 통합 빌드(main.c)에서는 빠지도록 매크로로 감쌈
-// 단독으로 돌려 보려면 컴파일할 때 /DDETECT_STANDALONE 을 붙임
-#ifdef DETECT_STANDALONE
 int main(void)
 {
     char window_title[TITLE_SIZE];
@@ -539,4 +536,3 @@ int main(void)
 
     return 0;
 }
-#endif // DETECT_STANDALONE
