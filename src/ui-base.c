@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
-#include <conio.h>
 #include "study_ui.h"
 #include "level_ui.h"
-#include "warning.h"
 #include "result_ui.h"
+#include "timer.h"
 
 
 int main() {
@@ -27,8 +26,14 @@ int main() {
         printf("----------------------------------------\n\n");
         printf("메뉴 선택>> ");
 
-        if (scanf_s("%d", &menu) != 1) {
-            while (getchar() != '\n');
+        int input_result = scanf_s("%d", &menu);
+        int ch;
+        if (input_result == EOF) {
+            break;
+        }
+        while ((ch = getchar()) != '\n' && ch != EOF) {
+        }
+        if (input_result != 1) {
             continue;
         }
 
@@ -38,16 +43,18 @@ int main() {
         }
 
        if (menu == 1) {
-            Study_ui("C Programming", 60, 1930, 190, 2);// 학습 과목, 목표 시간(분), 순수 공부 시간(초), 이탈 시간(초), 이탈 횟수
-            Sleep(3000);
-            warning();
-            while (1) {
-                int key = _getch();
-                if (key == 'q' || key == 'Q') {
-                    result_ui("C Programming", 60,1930, 190, 2,320, 30, 0, 1291); // 학습 과목, 목표 시간, 순수 공부 시간, 이탈 시간, 이탈 횟수, 획득 포인트, 감점 포인트, 보너스 포인트, 누적 포인트
-                    break;
-                }
+            Session rec = {0};
+
+            system("cls");
+            input_plan(&rec);
+            if (feof(stdin) || ferror(stdin)) {
+                break;
             }
+
+            Study_ui(&rec);
+            result_ui(rec.subject, rec.goal_min, rec.study_sec,
+                      rec.distract_sec, rec.distract_count,
+                      320, 30, 0, 1291); // 포인트는 테스트 값
         }
 
        else if (menu == 2) {
@@ -67,8 +74,8 @@ int main() {
         }
 
         printf("\n  Press Enter to return...");
-        while (getchar() != '\n');
-        getchar();
+        while ((ch = getchar()) != '\n' && ch != EOF) {
+        }
     }
 
     return 0;

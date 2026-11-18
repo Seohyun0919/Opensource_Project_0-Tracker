@@ -1,11 +1,10 @@
-// M1 계획·타이머. 이름·과목·목표 시간 입력 검사와 Enter/Q 타이머.
+// M1 계획·타이머. 이름·과목·목표 시간 입력 검사와 경과 시간 계산.
 // 결과(study_sec, goal_achieved 등)는 Session에 채워 둠. 저장은 M3 몫.
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <conio.h>
 #include <windows.h>
 #include "timer.h"
 
@@ -182,72 +181,17 @@ void input_plan(Session *rec)
     rec->session_num = 0;
 }
 
-// 타이머를 실행하는 함수 (Enter로 시작, Q로 종료)
-void run_timer(Session *rec)
+// 화면 출력과 키 입력은 Study_ui에서 처리한다.
+void start_timer(TimerState* timer)
 {
-    int ch;
-    int has_key;
-    int elapsed = 0;
-    int printed_sec = -1;
-    time_t start;
-    time_t now;
-    int goal_sec;
+    timer->start_ms = GetTickCount64();
+}
 
-    printf("\nEnter를 누르면 시작합니다. (종료: Q)\n");
+void update_timer(const TimerState* timer, Session* rec)
+{
+    ULONGLONG elapsed_ms = GetTickCount64() - timer->start_ms;
 
-    // Enter 키를 누를 때까지 대기
-    ch = _getch();
-    while (ch != '\r') {
-        ch = _getch();
-    }
-
-    start = time(NULL);
-
-    while (1) {
-        // 키가 눌렸는지 확인 (눌리지 않았으면 기다리지 않고 넘어감)
-        has_key = _kbhit();
-
-        if (has_key != 0) {
-            ch = _getch();
-
-            // Q 키를 누르면 타이머 종료
-            if (ch == 'q' || ch == 'Q') {
-                break;
-            }
-        }
-
-        // 시작한 뒤 지난 시간(초) 계산
-        now = time(NULL);
-        elapsed = (int)difftime(now, start);
-
-        // 초가 바뀐 경우에만 화면 갱신
-        if (elapsed != printed_sec) {
-            printf("\r경과 시간: %02d:%02d   ", elapsed / 60, elapsed % 60);
-            fflush(stdout);
-            printed_sec = elapsed;
-        }
-
-        // CPU 사용을 줄이기 위해 0.1초 대기
-        Sleep(100);
-    }
-
-    // 목표 시간(분)을 초로 바꿔서 비교
-    goal_sec = rec->goal_min * 60;
-
-    // 공부한 시간은 경과 시간 전체로 저장 (이탈 시간 처리는 M2 연결 후 정함)
-    rec->study_sec = elapsed;
-    rec->distract_sec = 0;
-    rec->distract_count = 0;
-
-    // 목표 시간과 같아도 달성으로 봄
-    if (rec->study_sec >= goal_sec) {
-        rec->goal_achieved = 1;
-    }
-
-    // 목표 시간보다 적게 공부한 경우
-    else {
-        rec->goal_achieved = 0;
-    }
-
-    printf("\n\n종료되었습니다.\n");
+    // 이탈 감지 연결 전까지 전체 경과 시간을 공부 시간으로 계산한다.
+    rec->study_sec = (int)(elapsed_ms / 1000ULL);
+    rec->goal_achieved = (rec->study_sec >= rec->goal_min * 60);
 }

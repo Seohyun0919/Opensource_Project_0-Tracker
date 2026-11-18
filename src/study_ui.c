@@ -1,8 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <conio.h>
 #include <windows.h>
 #include "study_ui.h"
+#include "timer.h"
 
-void Study_ui(const char* subject, int goal_min,
+static void draw_study(const char* subject, int goal_min,
                int study_sec, int distract_sec,
                int distract_count) {
     HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -47,7 +50,62 @@ void Study_ui(const char* subject, int goal_min,
 
     printf("]\n\n");
     printf("----------------------------------------\n");
-    printf("[P] 일시 정지       [Q] 공부 종료\n");
+    printf("[Q] 공부 종료\n");
     printf("========================================\n");
     fflush(stdout);
+}
+
+void Study_ui(Session* rec)
+{
+    TimerState timer;
+    int last_sec = -1;
+
+    printf("\nEnter를 누르면 시작합니다.\n");
+    fflush(stdout);
+
+    while (1) {
+        int key = _getch();
+        if (key == 0 || key == 0xE0) {
+            _getch();
+            continue;
+        }
+        if (key == '\r') {
+            break;
+        }
+    }
+
+    rec->study_sec = 0;
+    rec->distract_sec = 0;
+    rec->distract_count = 0;
+    rec->goal_achieved = 0;
+
+    system("cls");
+    start_timer(&timer);
+
+    while (1) {
+        int quit = 0;
+        if (_kbhit()) {
+            int key = _getch();
+            if (key == 0 || key == 0xE0) {
+                _getch();
+            }
+            else if (key == 'q' || key == 'Q') {
+                quit = 1;
+            }
+        }
+
+        // 종료 키를 누른 시점까지 계산한다.
+        update_timer(&timer, rec);
+        if (quit) {
+            break;
+        }
+
+        if (rec->study_sec != last_sec) {
+            draw_study(rec->subject, rec->goal_min,
+                       rec->study_sec, rec->distract_sec,
+                       rec->distract_count);
+            last_sec = rec->study_sec;
+        }
+        Sleep(100);
+    }
 }
