@@ -3,14 +3,14 @@
 
 #include "common.h"
 
-#define DEFAULT_KEYWORD_COUNT 4 // 기본 이탈 키워드 개수 
+int get_keyword_sec(int index);
 
-void get_window_title(char window_title[]);
-int is_distract_title(char window_title[]);
+int detect_current_window(void);
 
-int has_keyword(char word[]);
-void load_keywords(void);
-void save_keywords(void);
+// 이탈 상태 초기화
+void init_detect(void);
 
+// 이탈 시간 및 횟수 계산
+void update_detect(Session* rec, int elapsed);
 
 #endif

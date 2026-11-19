@@ -11,7 +11,7 @@ static DWORD WINAPI warningThread(LPVOID arg) {
         L"학습 이탈이 감지되었습니다!\n"
         L"공부에 다시 집중하세요.",
         L"0:Tracker WARNING",
-        MB_OK | MB_ICONWARNING | MB_TOPMOST
+        MB_OK | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND
     );
 
     InterlockedExchange(&warning_open, 0);
