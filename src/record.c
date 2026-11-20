@@ -9,6 +9,7 @@
 // 모든 칸을 최대로 채워도 한 줄이 210바이트를 안 넘어서 넉넉히 잡음
 #define LINE_BUF_SIZE 512
 #define KEYWORD_BUF (MAX_KEYWORD_LEN * 3 + 1)
+#define SUBJECT_BUF (MAX_SUBJECT_LEN * 3 + 1)
 
 // keyword.c의 기본 이탈 키워드와 같게 맞춤
 static const char default_distract[][KEYWORD_BUF] = {
@@ -140,7 +141,8 @@ int loadSessions(Session* list, int max)
     return count;
 }
 
-int saveKeywords(const char* file, char list[][KEYWORD_BUF], int count)
+// 키워드와 과목은 배열 한 칸 크기만 달라서 width로 받아 같이 씀
+static int writeLines(const char* file, const char* list, size_t width, int count)
 {
     FILE* fp;
     int i;
@@ -149,21 +151,48 @@ int saveKeywords(const char* file, char list[][KEYWORD_BUF], int count)
         return 0;
     }
     for (i = 0; i < count; i++) {
-        writeField(fp, list[i]);
+        writeField(fp, list + i * width);
         fputc('\n', fp);
     }
     return finishWrite(fp);
 }
 
-int loadKeywords(const char* file, char list[][KEYWORD_BUF], int max)
+// 파일이 없으면 -1. 빈 파일(0개)과 구분해야 기본값을 넣을지 정할 수 있음
+static int readLines(const char* file, char* list, size_t width, int max)
 {
     FILE* fp;
     char line[LINE_BUF_SIZE];
-    const char (*defaults)[KEYWORD_BUF] = NULL;
-    int default_count = 0;
     int count = 0;
 
     if (fopen_s(&fp, file, "r") != 0) {
+        return -1;
+    }
+    while (count < max && fgets(line, sizeof(line), fp) != NULL) {
+        line[strcspn(line, "\r\n")] = '\0';
+        // 빈 줄은 메모장으로 고치다 생기기 쉬움. 너무 긴 줄은 자르면 한글이 깨져서 버림
+        if (line[0] == '\0' || strlen(line) >= width) {
+            continue;
+        }
+        strcpy_s(list + count * width, width, line);
+        count++;
+    }
+    fclose(fp);
+    return count;
+}
+
+int saveKeywords(const char* file, char list[][KEYWORD_BUF], int count)
+{
+    return writeLines(file, list[0], KEYWORD_BUF, count);
+}
+
+int loadKeywords(const char* file, char list[][KEYWORD_BUF], int max)
+{
+    const char (*defaults)[KEYWORD_BUF] = NULL;
+    int default_count = 0;
+    int count = readLines(file, list[0], KEYWORD_BUF, max);
+
+    if (count < 0) {
+        count = 0;
         if (strcmp(file, FILE_DISTRACT_KEYWORDS) == 0) {
             defaults = default_distract;
             default_count = sizeof(default_distract) / sizeof(default_distract[0]);
@@ -176,16 +205,19 @@ int loadKeywords(const char* file, char list[][KEYWORD_BUF], int max)
         }
         // 파일을 못 만들어도 기본값으로 감지는 돌아가야 해서 실패를 무시함
         saveKeywords(file, list, count);
-        return count;
     }
-    while (count < max && fgets(line, sizeof(line), fp) != NULL) {
-        line[strcspn(line, "\r\n")] = '\0';
-        // 빈 줄은 메모장으로 고치다 생기기 쉬움. 너무 긴 줄은 자르면 한글이 깨져서 버림
-        if (line[0] == '\0' || strlen(line) >= KEYWORD_BUF) {
-            continue;
-        }
-        strcpy_s(list[count++], KEYWORD_BUF, line);
-    }
-    fclose(fp);
     return count;
+}
+
+// 과목은 기본값이 없음. 파일이 없으면 0개이고, 처음 저장할 때 파일이 생김
+int loadSubjects(char list[][SUBJECT_BUF], int max)
+{
+    int count = readLines(FILE_SUBJECTS, list[0], SUBJECT_BUF, max);
+
+    return count < 0 ? 0 : count;
+}
+
+int saveSubjects(char list[][SUBJECT_BUF], int count)
+{
+    return writeLines(FILE_SUBJECTS, list[0], SUBJECT_BUF, count);
 }
