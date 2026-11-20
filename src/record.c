@@ -9,12 +9,24 @@
 // 모든 칸을 최대로 채워도 한 줄이 210바이트를 안 넘어서 넉넉히 잡음
 #define LINE_BUF_SIZE 512
 
-// 이름이나 과목에 탭, 줄바꿈이 섞이면 칸이 밀려서 그 줄을 못 읽게 됨
+// 문자열 칸에 탭, 줄바꿈이 섞이면 칸이 밀려서 그 줄을 못 읽게 됨
+// 창 제목은 프로그램마다 달라서 실제로 탭이 들어 있을 수 있음
 static void writeField(FILE* fp, const char* text)
 {
     for (; *text != '\0'; text++) {
         fputc(strchr("\t\r\n", *text) ? ' ' : *text, fp);
     }
+}
+
+// 디스크가 꽉 차는 등 쓰기가 실패해도 열기는 성공하므로 따로 확인함
+static int finishWrite(FILE* fp)
+{
+    int ok = !ferror(fp);
+
+    if (fclose(fp) != 0) {
+        ok = 0;
+    }
+    return ok;
 }
 
 // 칸 수가 안 맞는 줄(쓰다가 끊긴 줄 등)은 0을 돌려서 건너뛰게 함
@@ -71,7 +83,6 @@ int getNextSessionNum(void)
 int saveSession(const Session* s)
 {
     FILE* fp;
-    int ok;
 
     if (fopen_s(&fp, FILE_SESSIONS, "a") != 0) {
         return 0;
@@ -82,13 +93,20 @@ int saveSession(const Session* s)
     writeField(fp, s->subject);
     fprintf(fp, "\t%d\t%d\t%d\t%d\t%d\n", s->goal_min, s->study_sec,
             s->distract_sec, s->distract_count, s->goal_achieved);
+    return finishWrite(fp);
+}
 
-    // 디스크가 꽉 차는 등 쓰기가 실패해도 열기는 성공하므로 따로 확인함
-    ok = !ferror(fp);
-    if (fclose(fp) != 0) {
-        ok = 0;
+int saveWindowLog(int session_num, const WindowLog* log)
+{
+    FILE* fp;
+
+    if (fopen_s(&fp, FILE_WINDOW_LOG, "a") != 0) {
+        return 0;
     }
-    return ok;
+    fprintf(fp, "%d\t%s\t", session_num, log->switch_time);
+    writeField(fp, log->window_title);
+    fprintf(fp, "\t%d\t%d\n", log->stay_sec, log->is_distract);
+    return finishWrite(fp);
 }
 
 int loadSessions(Session* list, int max)
