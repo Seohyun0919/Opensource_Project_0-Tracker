@@ -1,12 +1,13 @@
-// M3 기록 저장. M1이 끝난 세션을 넘기면 sessions.txt 끝에 한 줄씩 붙임
-// M4~M6은 loadSessions로 읽어 감. 칸 순서는 RULES.md 파일 형식 그대로
+// M3 기록 파일. 세션(M1)과 창 전환(M2)은 파일 끝에 한 줄씩 붙이고
+// 키워드, 과목 목록은 통째로 덮어씀. 칸 순서는 RULES.md 파일 형식 그대로
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "common.h"
 
 #define SESSION_FIELDS 9
-// 모든 칸을 최대로 채워도 한 줄이 210바이트를 안 넘어서 넉넉히 잡음
+// 세션 줄은 모든 칸을 최대로 채워도 210바이트 안쪽. 키워드, 과목 줄은 더 짧음
+// 주의: 창 전환 줄은 제목만 768바이트라 읽을 때는 더 큰 버퍼가 필요함
 #define LINE_BUF_SIZE 512
 #define KEYWORD_BUF (MAX_KEYWORD_LEN * 3 + 1)
 #define SUBJECT_BUF (MAX_SUBJECT_LEN * 3 + 1)
