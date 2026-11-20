@@ -1,0 +1,53 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-ui",
+            "type": "shell",
+            "command": "cl",
+            "args": [
+                "/nologo",
+                "/Zi",
+                "/utf-8",
+                "/Fe:${workspaceFolder}\\tracker.exe",
+                "${workspaceFolder}\\src\\ui-base.c",
+                "${workspaceFolder}\\src\\study_ui.c",
+                "${workspaceFolder}\\src\\timer.c",
+                "${workspaceFolder}\\src\\warning.c",
+                "${workspaceFolder}\\src\\level_ui.c",
+                "${workspaceFolder}\\src\\result_ui.c",
+                "${workspaceFolder}\\src\\detect.c",
+                "${workspaceFolder}\\src\\keyword.c",
+                "user32.lib"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "C/C++: gcc build active file",
+            "type": "cppbuild",
+            "command": "gcc",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": ["$gcc"],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        }
+    ]
+}
