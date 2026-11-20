@@ -8,6 +8,13 @@
 #define SESSION_FIELDS 9
 // 모든 칸을 최대로 채워도 한 줄이 210바이트를 안 넘어서 넉넉히 잡음
 #define LINE_BUF_SIZE 512
+#define KEYWORD_BUF (MAX_KEYWORD_LEN * 3 + 1)
+
+// keyword.c의 기본 이탈 키워드와 같게 맞춤
+static const char default_distract[][KEYWORD_BUF] = {
+    "YouTube", "카카오톡", "Instagram", "Facebook"
+};
+static const char default_allow[][KEYWORD_BUF] = { "강의", "인강" };
 
 // 문자열 칸에 탭, 줄바꿈이 섞이면 칸이 밀려서 그 줄을 못 읽게 됨
 // 창 제목은 프로그램마다 달라서 실제로 탭이 들어 있을 수 있음
@@ -128,6 +135,56 @@ int loadSessions(Session* list, int max)
             list[count] = s;
         }
         count++;
+    }
+    fclose(fp);
+    return count;
+}
+
+int saveKeywords(const char* file, char list[][KEYWORD_BUF], int count)
+{
+    FILE* fp;
+    int i;
+
+    if (fopen_s(&fp, file, "w") != 0) {
+        return 0;
+    }
+    for (i = 0; i < count; i++) {
+        writeField(fp, list[i]);
+        fputc('\n', fp);
+    }
+    return finishWrite(fp);
+}
+
+int loadKeywords(const char* file, char list[][KEYWORD_BUF], int max)
+{
+    FILE* fp;
+    char line[LINE_BUF_SIZE];
+    const char (*defaults)[KEYWORD_BUF] = NULL;
+    int default_count = 0;
+    int count = 0;
+
+    if (fopen_s(&fp, file, "r") != 0) {
+        if (strcmp(file, FILE_DISTRACT_KEYWORDS) == 0) {
+            defaults = default_distract;
+            default_count = sizeof(default_distract) / sizeof(default_distract[0]);
+        } else if (strcmp(file, FILE_ALLOW_KEYWORDS) == 0) {
+            defaults = default_allow;
+            default_count = sizeof(default_allow) / sizeof(default_allow[0]);
+        }
+        for (; count < default_count && count < max; count++) {
+            strcpy_s(list[count], KEYWORD_BUF, defaults[count]);
+        }
+        // 파일을 못 만들어도 기본값으로 감지는 돌아가야 해서 실패를 무시함
+        saveKeywords(file, list, count);
+        return count;
+    }
+    while (count < max && fgets(line, sizeof(line), fp) != NULL) {
+        line[strcspn(line, "\r\n")] = '\0';
+        // 빈 줄은 메모장으로 고치다 생기기 쉬움. 너무 긴 줄은 자르면 한글이 깨져서 버림
+        if (line[0] == '\0' || strlen(line) >= KEYWORD_BUF) {
+            continue;
+        }
+        strcpy_s(list[count++], KEYWORD_BUF, line);
     }
     fclose(fp);
     return count;
