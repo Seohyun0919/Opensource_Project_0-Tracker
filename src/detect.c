@@ -31,7 +31,8 @@ static void make_lower(char text[])
 
 // 현재 활성 창을 한 번 검사함
 // 키워드에 걸리면 목록에서 몇 번째 칸인지 돌려줌 (첫 번째 칸은 0)
-// 걸리는 키워드가 없거나 창 제목을 읽지 못하면 -1을 돌려줌
+// 걸리는 키워드가 없으면 -1을 돌려줌
+// 창 제목이 비어 있거나 읽지 못하면 -2를 돌려줌 
 int detect_current_window(void)
 {
     wchar_t wide_title[MAX_TITLE_LEN + 1];
@@ -41,10 +42,12 @@ int detect_current_window(void)
     HWND window = GetForegroundWindow();
 
     // 창이 없거나 제목을 읽지 못하면 비교할 수 없으므로 여기서 끝냄
+    // -1(학습) 대신 -2를 돌려줌 
+    // 바탕화면, 작업 표시줄처럼 제목이 비어있는 창을 학습으로 인식하지 않고 바로 이전 상태로 이어가기 위함  
     if (window == NULL ||
         GetWindowTextW(window, wide_title, MAX_TITLE_LEN + 1) == 0)
     {
-        return -1;
+        return -2;
     }
 
     // Windows에서 읽어 온 제목을 키워드와 같은 UTF-8 문자열로 바꿈
