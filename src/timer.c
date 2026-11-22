@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <windows.h>
 #include "timer.h"
 #include "detect.h"
 
@@ -183,22 +182,17 @@ void input_plan(Session *rec)
 }
 
 // 화면 출력과 키 입력은 study_ui에서 처리한다.
-void start_timer(TimerState* timer)
+void start_timer(TimerState* timer, double now)
 {
-    timer->start_ms = GetTickCount64();
+    timer->start_time = now;
     init_detect();
 }
 
-void update_timer(const TimerState* timer, Session* rec)
+void update_timer(const TimerState* timer, Session* rec, double now)
 {
-    ULONGLONG elapsed_ms = GetTickCount64() - timer->start_ms;
+    int elapsed = (int)(now - timer->start_time);
 
-    int elapsed = (int)(elapsed_ms / 1000ULL);
-    // 이탈 감지 함수 호출
     update_detect(rec, elapsed);
-
-    // 순수 공부 시간 계산
     rec->study_sec = elapsed - rec->distract_sec;
-
     rec->goal_achieved = (rec->study_sec >= rec->goal_min * 60);
 }

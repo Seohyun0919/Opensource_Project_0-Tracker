@@ -81,7 +81,7 @@ void study_ui(Session* rec)
     rec->goal_achieved = 0;
 
     system("cls");
-    start_timer(&timer);
+    start_timer(&timer, rec->goal_min * 60.0);
 
     while (1) {
         int quit = 0;
