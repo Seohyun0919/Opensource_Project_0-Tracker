@@ -38,6 +38,19 @@ static int finishWrite(FILE* fp)
     return ok;
 }
 
+// fgets가 버퍼에서 끊은 줄이면 나머지를 버리고 1. 안 버리면 뒷부분이 다음 줄로 읽힘
+static int skipLongLine(FILE* fp, const char* line)
+{
+    int c;
+
+    if (strchr(line, '\n') != NULL || feof(fp)) {
+        return 0;
+    }
+    while ((c = fgetc(fp)) != '\n' && c != EOF) {
+    }
+    return 1;
+}
+
 // 칸 수가 안 맞는 줄(쓰다가 끊긴 줄 등)은 0을 돌려서 건너뛰게 함
 static int parseSession(char* line, Session* s)
 {
@@ -81,6 +94,9 @@ int getNextSessionNum(void)
         return 1;
     }
     while (fgets(line, sizeof(line), fp) != NULL) {
+        if (skipLongLine(fp, line)) {
+            continue;
+        }
         if (sscanf_s(line, "%d", &num) == 1 && num > max_num) {
             max_num = num;
         }
@@ -130,7 +146,7 @@ int loadSessions(Session* list, int max)
         return 0;
     }
     while (fgets(line, sizeof(line), fp) != NULL) {
-        if (!parseSession(line, &s)) {
+        if (skipLongLine(fp, line) || !parseSession(line, &s)) {
             continue;
         }
         if (count < max) {
@@ -169,6 +185,9 @@ static int readLines(const char* file, char* list, size_t width, int max)
         return -1;
     }
     while (count < max && fgets(line, sizeof(line), fp) != NULL) {
+        if (skipLongLine(fp, line)) {
+            continue;
+        }
         line[strcspn(line, "\r\n")] = '\0';
         // 빈 줄은 메모장으로 고치다 생기기 쉬움. 너무 긴 줄은 자르면 한글이 깨져서 버림
         if (line[0] == '\0' || strlen(line) >= width) {
