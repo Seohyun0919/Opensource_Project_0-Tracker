@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include "flow.h"
+#include "detect.h"
 
 void flow_start(SessionFlow* f, const Session* plan)
 {
@@ -8,6 +9,9 @@ void flow_start(SessionFlow* f, const Session* plan)
     f->rec.distract_sec = 0;
     f->rec.distract_count = 0;
     f->rec.goal_achieved = 0;
+    f->prev_distract_sec = 0;
+    f->distracting = 0;
+    f->warn_keyword = -1;
 
     f->state = FLOW_STUDY;
     f->last_tick = GetTime();
@@ -24,6 +28,10 @@ void flow_update(SessionFlow* f)
         if (now - f->last_tick >= 1.0 || quit) {
             f->last_tick = now;
             update_timer(&f->timer, &f->rec, now);
+
+            f->distracting = (f->rec.distract_sec > f->prev_distract_sec);
+            f->prev_distract_sec = f->rec.distract_sec;
+            f->warn_keyword = f->distracting ? detect_current_window() : -1;
         }
         if (quit) {
             f->state = FLOW_RESULT;
@@ -36,7 +44,15 @@ void flow_update(SessionFlow* f)
     }
 }
 
+//이후 feature/ui-raylib 함수 이름으로 교체
 void flow_draw(const SessionFlow* f)
 {
-    (void)f;
+    if (f->state == FLOW_STUDY) {
+        if (f->distracting)
+            draw_warning_screen(f->warn_keyword);
+        else
+            draw_study_screen(f->rec.subject, f->rec.goal_min,
+                              f->rec.study_sec, f->rec.distract_sec,
+                              f->rec.distract_count);
+    }
 }

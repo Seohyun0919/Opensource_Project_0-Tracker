@@ -4,6 +4,8 @@
 #include "common.h"
 #include "timer.h"
 
+
+
 typedef enum { FLOW_STUDY, FLOW_RESULT, FLOW_DONE } FlowState;
 
 typedef struct {
@@ -11,6 +13,9 @@ typedef struct {
     Session rec;
     TimerState timer;
     double last_tick;
+    int prev_distract_sec;
+    int distracting;      // 1이면 경고 화면
+    int warn_keyword;     // 이탈 키워드 번호, 없으면 -1
 } SessionFlow;
 
 void flow_start(SessionFlow* f, const Session* plan);
