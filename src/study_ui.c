@@ -81,8 +81,7 @@ void study_ui(Session* rec)
     rec->goal_achieved = 0;
 
     system("cls");
-    start_timer(&timer, rec->goal_min * 60.0);
-
+    start_timer(&timer, GetTickCount64() / 1000.0);
     while (1) {
         int quit = 0;
         if (_kbhit()) {
@@ -96,7 +95,7 @@ void study_ui(Session* rec)
         }
 
         // 종료 키를 누른 시점까지 계산한다.
-        update_timer(&timer, rec);
+        update_timer(&timer, rec, GetTickCount64() / 1000.0);
         if (quit) {
             break;
         }
