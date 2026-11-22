@@ -66,6 +66,6 @@ void flow_draw(const SessionFlow* f)
                            f->rec.study_sec, f->rec.distract_sec,
                            f->rec.distract_count, 320, 30, 0, 1291);
         if (!f->save_ok)
-            draw_save_error();   // 없으면 홍슬아에게 요청 또는 임시로 DrawText
+            draw_save_error();   // 이후 feature/ui-raylib 함수 이름으로 교체
     }
 }
