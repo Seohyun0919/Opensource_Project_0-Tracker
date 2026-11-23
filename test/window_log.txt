@@ -1,0 +1,11 @@
+1	20:00:00	Visual Studio Code	1500	0
+1	20:25:00	YouTube - Chrome	420	1
+1	20:32:00	Visual Studio Code	900	0
+1	20:47:00	카카오톡	180	1
+1	20:50:00	자료구조 강의 - Chrome	600	0
+2	14:00:00	Visual Studio Code	1200	0
+2	14:20:00	카카오톡	3	0
+2	14:20:03	Visual Studio Code	597	0
+2	14:30:00	Instagram - Chrome	300	1
+2	14:35:00	메모장	600	0
+3	19:00:00	영어 인강 - Chrome	1500	0

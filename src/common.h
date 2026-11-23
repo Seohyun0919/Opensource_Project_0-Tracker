@@ -72,8 +72,10 @@ int getPrevDayStudySec(const char* date);
 int findBestSession(const char* subject, Session* best);
 
 // 파일이 없으면 기본값으로 만든 뒤 읽음
+// loadSessions와 달리 채운 개수를 돌려줌. max개 넘는 줄은 버림
 int loadKeywords(const char* file, char list[][MAX_KEYWORD_LEN * 3 + 1], int max);
 int saveKeywords(const char* file, char list[][MAX_KEYWORD_LEN * 3 + 1], int count);
+// 파일이 없으면 0개. loadKeywords처럼 채운 개수를 돌려줌
 int loadSubjects(char list[][MAX_SUBJECT_LEN * 3 + 1], int max);
 int saveSubjects(char list[][MAX_SUBJECT_LEN * 3 + 1], int count);
 // 파일이 없으면 0점
