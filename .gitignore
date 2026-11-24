@@ -1,4 +1,6 @@
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+
 *.exe
 *.obj
 *.pdb
