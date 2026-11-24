@@ -6,6 +6,8 @@
 #include "warning.h"
 
 #define TITLE_SIZE (MAX_TITLE_LEN * 3 + 1)
+// 과목명 하나를 담는 배열의 크기
+#define SUBJECT_SIZE (MAX_SUBJECT_LEN * 3 + 1)
 
 static int was_distract = 0;
 static int candidate_start = -1;
@@ -15,6 +17,11 @@ static int distract_total = 0;
 static int keyword_sec[MAX_KEYWORDS] = {0};
 static int candidate_sec[MAX_KEYWORDS] = {0};
 static int last_index = -1;
+// 허용 키워드 (제목에 있으면 학습 이탈 키워드가 있어도 학습으로 봄)
+static char allow_keywords[2][KEYWORD_SIZE] = {"강의", "인강"};
+// 현재 공부하는 과목명 (소문자로 바꿔서 저장함)
+// 제목에 과목명이 있다면 학습으로 봄 
+static char subject_lower[SUBJECT_SIZE] ="";
 
 // 영문 대문자만 소문자로 바꿈
 // 예를 들어 창 제목에 YOUTUBE가 있어도 YouTube 키워드에 걸리게 함
@@ -29,9 +36,27 @@ static void make_lower(char text[])
     }
 }
 
+// 문자열의 글자 수를 셈 (한글 1글자는 1)
+// UTF-8에서 한글은 3바이트이기 때문에 이어지는 바이트는 계산하지 않음 
+static int count_chars(const char text[])
+{
+    int count = 0;
+
+    for (int i = 0; text[i] != '\0'; i++)
+    {
+        if (((unsigned char) text[i] & 0xC0) != 0x80)
+        {
+            count ++;
+        }
+    }
+    return count;
+}
+
 // 현재 활성 창을 한 번 검사함
 // 키워드에 걸리면 목록에서 몇 번째 칸인지 돌려줌 (첫 번째 칸은 0)
-// 걸리는 키워드가 없거나 창 제목을 읽지 못하면 -1을 돌려줌
+// 걸리는 키워드가 없으면 -1을 돌려줌
+// 허용 키워드(강의, 인강)나 과목명이 제목에 있다면 학습으로 보고 -1을 돌려준다 
+// 창 제목이 비어 있거나 읽지 못하면 -2를 돌려줌 
 int detect_current_window(void)
 {
     wchar_t wide_title[MAX_TITLE_LEN + 1];
@@ -41,10 +66,12 @@ int detect_current_window(void)
     HWND window = GetForegroundWindow();
 
     // 창이 없거나 제목을 읽지 못하면 비교할 수 없으므로 여기서 끝냄
+    // -1(학습) 대신 -2를 돌려줌 
+    // 바탕화면, 작업 표시줄처럼 제목이 비어있는 창을 학습으로 인식하지 않고 바로 이전 상태로 이어가기 위함  
     if (window == NULL ||
         GetWindowTextW(window, wide_title, MAX_TITLE_LEN + 1) == 0)
     {
-        return -1;
+        return -2;
     }
 
     // Windows에서 읽어 온 제목을 키워드와 같은 UTF-8 문자열로 바꿈
@@ -59,6 +86,24 @@ int detect_current_window(void)
     }
 
     make_lower(title);
+
+    // 허용 키워드(강의, 인강)가 제목에 있다면 학습으로 봄
+    // ex. "C언어 강의 - YouTube" -> YouTube가 있어도 학습으로 봄 
+    for (int i = 0; i < 2; i++)
+    {
+        if (strstr(title, allow_keywords[i]) != NULL)
+        {
+            return -1;
+        }
+    }
+
+    // 과목명이 제목에 있다면 학습으로 봄 
+    // ex. 과목이 오픈소스라면 "오픈소스의 역사 - YouTube" -> 학습으로 봄 
+    // 과목명이 1글자면 (ex. "C") 거의 대다수의 제목에 걸리기 때문에 2글자 이상일 때만 검사함 
+    if (count_chars(subject_lower) >= 2 && strstr(title, subject_lower) != NULL)
+    {
+        return -1;
+    } 
 
     // 목록 앞에서부터 창 제목에 들어 있는 키워드를 찾음
     for (int i = 0; i < keyword_count(); i++)
@@ -117,6 +162,10 @@ void update_detect(Session* rec, int elapsed)
 
     last_sec = elapsed;
 
+    // 과목명을 소문자로 바꿔서 저장함 (제목과 비교를 위해)
+    strcpy (subject_lower, rec -> subject);
+    make_lower(subject_lower);
+    
     index = detect_current_window();
 
     // 이탈 키워드 감지
