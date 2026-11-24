@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
+#include "common.h"
 #include "study_ui.h"
 #include "level_ui.h"
 #include "result_ui.h"
 #include "timer.h"
 #include "keyword.h"
+#include "point.h"
 
 
 int main() {
@@ -39,7 +41,7 @@ int main() {
             continue;
         }
 
-        if (menu == 0) {
+       if (menu == 0) {
             printf("\n  종료합니다 \n");
             break;
         }
@@ -54,16 +56,20 @@ int main() {
             }
 
             study_ui(&rec);
-            result_ui(rec.subject, rec.goal_min, rec.study_sec,rec.distract_sec, rec.distract_count,320, 30, 0, 1291); // 포인트는 테스트 값
+
+            result_ui(rec.subject, rec.goal_min,
+                      rec.study_sec, rec.distract_sec, rec.distract_count,
+                      earn(rec.study_sec), penalty(rec.distract_sec),
+                      0,point(rec.study_sec, rec.distract_sec));
         }
 
        else if (menu == 2) {
             printf("\n  Menu %d selected.\n", menu);
         }
 
-       else if (menu == 3) {
-            level_ui(1001);// 누적 포인트
-        }
+       else if (menu == 3){
+            level_ui(loadPoints());// 누적 포인트
+       }
 
        else if (menu == 4) {
             keyword();            
