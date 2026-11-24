@@ -3,7 +3,6 @@
 #define TIMER_H
  
 #include "common.h"
-#include <windows.h>
  
 void input_user_name(char *user_name);
 void input_subject(char *subject);
@@ -15,11 +14,11 @@ int input_goal_min(void);
 void input_plan(Session *rec);
  
 typedef struct {
-    ULONGLONG start_ms;
+    double start_time;   // 시작 시각(초). raylib이면 GetTime() 값
 } TimerState;
 
-void start_timer(TimerState* timer);
+void start_timer(TimerState* timer, double now);
 // 이탈 감지 연결 전까지 전체 경과 시간을 공부 시간으로 계산한다.
-void update_timer(const TimerState* timer, Session* rec);
+void update_timer(const TimerState* timer, Session* rec, double now);
  
 #endif
