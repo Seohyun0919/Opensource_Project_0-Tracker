@@ -105,12 +105,6 @@ static void input_text(const char *prompt, char out[], int max_chars)
     }
 }
 
-// 사용자 이름 입력
-void input_user_name(char user_name[])
-{
-    input_text("이름", user_name, MAX_NAME_LEN);
-}
-
 // 과목명 입력
 void input_subject(char subject[])
 {
@@ -172,7 +166,6 @@ static void get_today(char date[])
 // 이름, 과목, 목표 시간, 날짜를 입력받아 세션에 저장하는 함수
 void input_plan(Session *rec)
 {
-    input_user_name(rec->user_name);
     input_subject(rec->subject);
     rec->goal_min = input_goal_min();
     get_today(rec->date);
