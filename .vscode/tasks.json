@@ -19,6 +19,7 @@
                 "${workspaceFolder}\\src\\detect.c",
                 "${workspaceFolder}\\src\\keyword.c",
                 "${workspaceFolder}\\src\\record.c",
+                "${workspaceFolder}\\src\\setup.c",
                 "${workspaceFolder}\\src\\point.c",
                 "user32.lib"
             ],

@@ -8,7 +8,7 @@
 #include "timer.h"
 #include "keyword.h"
 #include "point.h"
-
+#include "setup.h"
 
 int main() {
     SetConsoleOutputCP(65001);
@@ -49,9 +49,7 @@ int main() {
        if (menu == 1) {
             Session rec = {0};
 
-            system("cls");
-            input_plan(&rec);
-            if (feof(stdin) || ferror(stdin)) {
+            if (!setup_run(&rec)) {
                 break;
             }
 

@@ -85,22 +85,6 @@ static void submit_pick(SetupState* s, const char* text)
     }
 }
 
-int setup_submit(SetupState* s, const char* line, Session* plan)
-{
-    char text[256];
-
-    snprintf(text, sizeof(text), "%s", line);
-    trim(text);
-    s->message[0] = '\0';
-
-    switch (s->step) {
-    case SETUP_PICK_SUBJECT:  submit_pick(s, text); break;
-    case SETUP_NEW_SUBJECT:   submit_new_subject(s, text); break;
-    case SETUP_GOAL:          return submit_goal(s, text, plan);
-    }
-    return 0;
-}
-
 // 새 과목 입력과 저장 추가
 static void submit_new_subject(SetupState* s, const char* text)
 {
@@ -134,6 +118,7 @@ static void submit_new_subject(SetupState* s, const char* text)
     }
 }
 
+//목표 시간 입력과 범위 검사 추가
 static int submit_goal(SetupState* s, const char* text, Session* plan)
 {
     char* end;
@@ -148,5 +133,66 @@ static int submit_goal(SetupState* s, const char* text, Session* plan)
     snprintf(plan->subject, sizeof(plan->subject), "%s", s->subjects[s->chosen]);
     snprintf(plan->date, sizeof(plan->date), "%s", s->date);
     plan->goal_min = (int)goal;
+    return 1;
+}
+
+int setup_submit(SetupState* s, const char* line, Session* plan)
+{
+    char text[256];
+
+    snprintf(text, sizeof(text), "%s", line);
+    trim(text);
+    s->message[0] = '\0';
+
+    switch (s->step) {
+    case SETUP_PICK_SUBJECT:  submit_pick(s, text); break;
+    case SETUP_NEW_SUBJECT:   submit_new_subject(s, text); break;
+    case SETUP_GOAL:          return submit_goal(s, text, plan);
+    }
+    return 0;
+}
+
+void setup_print(const SetupState* s)
+{
+    int i;
+
+    system("cls");
+    printf("========================================\n");
+    printf("          0:Tracker | 학습 설정\n");
+    printf("========================================\n\n");
+    printf("날짜 : %s\n\n", s->date);
+
+    if (s->step == SETUP_PICK_SUBJECT) {
+        printf("[0] 새로운 과목 추가\n");
+        for (i = 0; i < s->subject_count; i++) {
+            printf("[%d] %s\n", i + 1, s->subjects[i]);
+        }
+        printf("\n");
+    } else if (s->step == SETUP_GOAL) {
+        printf("과목 : %s\n\n", s->subjects[s->chosen]);
+    }
+
+    if (s->message[0]) printf("%s\n", s->message);
+
+    if (s->step == SETUP_PICK_SUBJECT) printf("과목 선택 : ");
+    else if (s->step == SETUP_NEW_SUBJECT) printf("새 과목명(1~20자) : ");
+    else printf("목표 시간(분) : ");
+    fflush(stdout);
+}
+
+int setup_run(Session* plan)
+{
+    SetupState s;
+    char line[256];
+
+    setup_init(&s);
+    do {
+        setup_print(&s);
+        if (!fgets(line, sizeof(line), stdin)) return 0;
+    } while (!setup_submit(&s, line, plan));
+
+    printf("\nEnter 키를 누르면 학습을 시작합니다.");
+    // 여기서 입력이 끊겨도 설정은 끝났으니 그대로 시작함
+    fgets(line, sizeof(line), stdin);
     return 1;
 }
