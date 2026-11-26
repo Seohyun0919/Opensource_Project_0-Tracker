@@ -58,6 +58,7 @@ static void go_step(SetupState* s, SetupStep step)
     s->message[0] = '\0';
 }
 
+// 과목 번호 선택 처리 추가
 static void submit_pick(SetupState* s, const char* text)
 {
     char* end;
@@ -91,8 +92,41 @@ int setup_submit(SetupState* s, const char* line, Session* plan)
 
     switch (s->step) {
     case SETUP_PICK_SUBJECT:  submit_pick(s, text); break;
-    case SETUP_NEW_SUBJECT:   break;
+    case SETUP_NEW_SUBJECT:   submit_new_subject(s, text); break;
     case SETUP_GOAL:          break;
     }
     return 0;
+}
+
+// 새 과목 입력과 저장 추가
+static void submit_new_subject(SetupState* s, const char* text)
+{
+    int i;
+
+    // 글자 수와 별개로 바이트도 확인함. 4바이트 글자가 섞이면 20자여도 배열을 넘음
+    if (text[0] == '\0' || utf8_len(text) > MAX_SUBJECT_LEN
+        || strlen(text) >= SETUP_SUBJECT_SIZE) {
+        set_message(s, "과목명은 1~20자로 입력해 주세요.");
+        return;
+    }
+    // 같은 이름을 또 저장하면 목록에 중복이 쌓임. 있으면 그 과목을 고른 것으로 처리
+    for (i = 0; i < s->subject_count; i++) {
+        if (strcmp(s->subjects[i], text) == 0) {
+            s->chosen = i;
+            go_step(s, SETUP_GOAL);
+            return;
+        }
+    }
+    if (s->subject_count >= SETUP_MAX_SUBJECTS) {
+        set_message(s, "과목은 30개까지 저장할 수 있습니다.");
+        return;
+    }
+    snprintf(s->subjects[s->subject_count], SETUP_SUBJECT_SIZE, "%s", text);
+    s->chosen = s->subject_count;
+    s->subject_count++;
+    go_step(s, SETUP_GOAL);
+    // 저장에 실패해도 이번 학습은 이어갈 수 있게 막지 않고 안내만 함
+    if (!saveSubjects(s->subjects, s->subject_count)) {
+        set_message(s, "과목 목록 파일을 저장하지 못했습니다.");
+    }
 }
