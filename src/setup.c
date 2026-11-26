@@ -6,6 +6,9 @@
 #include <time.h>
 #include "setup.h"
 
+#define GOAL_MIN_LIMIT  1
+#define GOAL_MAX_LIMIT  600
+
 static void today(char date[11])
 {
     time_t now = time(NULL);
@@ -93,7 +96,7 @@ int setup_submit(SetupState* s, const char* line, Session* plan)
     switch (s->step) {
     case SETUP_PICK_SUBJECT:  submit_pick(s, text); break;
     case SETUP_NEW_SUBJECT:   submit_new_subject(s, text); break;
-    case SETUP_GOAL:          break;
+    case SETUP_GOAL:          return submit_goal(s, text, plan);
     }
     return 0;
 }
@@ -129,4 +132,21 @@ static void submit_new_subject(SetupState* s, const char* text)
     if (!saveSubjects(s->subjects, s->subject_count)) {
         set_message(s, "과목 목록 파일을 저장하지 못했습니다.");
     }
+}
+
+static int submit_goal(SetupState* s, const char* text, Session* plan)
+{
+    char* end;
+    long goal = strtol(text, &end, 10);
+
+    if (text[0] == '\0' || *end != '\0'
+        || goal < GOAL_MIN_LIMIT || goal > GOAL_MAX_LIMIT) {
+        set_message(s, "목표 시간은 1~600분 사이로 입력해 주세요.");
+        return 0;
+    }
+    memset(plan, 0, sizeof(*plan));
+    snprintf(plan->subject, sizeof(plan->subject), "%s", s->subjects[s->chosen]);
+    snprintf(plan->date, sizeof(plan->date), "%s", s->date);
+    plan->goal_min = (int)goal;
+    return 1;
 }
