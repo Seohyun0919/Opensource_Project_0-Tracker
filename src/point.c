@@ -48,24 +48,3 @@ int penalty(int distract_sec)
 {
     return distract_sec / 60 * 10;
 }
-
-int loadPoints(void)
-{
-    FILE *fp = fopen(FILE_POINTS, "r");
-
-    /* 파일이 없으면 0점*/
-    if (fp == NULL) {
-        return 0;
-    }
-
-    int total_points;
-
-    if (fscanf(fp, "%d", &total_points) != 1) {    
-        fclose(fp);   
-        printf("포인트 불러오기 실패\n");       
-        return -1;
-    }
-
-    fclose(fp);
-    return total_points;
-}

@@ -3,9 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "common.h"
 
-#define SESSION_FIELDS 9
+#define SESSION_FIELDS 8
 // 세션 줄은 모든 칸을 최대로 채워도 210바이트 안쪽. 키워드, 과목 줄은 더 짧음
 // 주의: 창 전환 줄은 제목만 768바이트라 읽을 때는 더 큰 버퍼가 필요함
 #define LINE_BUF_SIZE 512
@@ -71,14 +72,13 @@ static int parseSession(char* line, Session* s)
     }
 
     s->session_num = atoi(fields[0]);
-    strncpy_s(s->user_name, sizeof(s->user_name), fields[1], _TRUNCATE);
-    strncpy_s(s->date, sizeof(s->date), fields[2], _TRUNCATE);
-    strncpy_s(s->subject, sizeof(s->subject), fields[3], _TRUNCATE);
-    s->goal_min = atoi(fields[4]);
-    s->study_sec = atoi(fields[5]);
-    s->distract_sec = atoi(fields[6]);
-    s->distract_count = atoi(fields[7]);
-    s->goal_achieved = atoi(fields[8]);
+    strncpy_s(s->date, sizeof(s->date), fields[1], _TRUNCATE);
+    strncpy_s(s->subject, sizeof(s->subject), fields[2], _TRUNCATE);
+    s->goal_min = atoi(fields[3]);
+    s->study_sec = atoi(fields[4]);
+    s->distract_sec = atoi(fields[5]);
+    s->distract_count = atoi(fields[6]);
+    s->goal_achieved = atoi(fields[7]);
     return 1;
 }
 
@@ -112,9 +112,7 @@ int saveSession(const Session* s)
     if (fopen_s(&fp, FILE_SESSIONS, "a") != 0) {
         return 0;
     }
-    fprintf(fp, "%d\t", s->session_num);
-    writeField(fp, s->user_name);
-    fprintf(fp, "\t%s\t", s->date);
+    fprintf(fp, "%d\t%s\t", s->session_num, s->date);
     writeField(fp, s->subject);
     fprintf(fp, "\t%d\t%d\t%d\t%d\t%d\n", s->goal_min, s->study_sec,
             s->distract_sec, s->distract_count, s->goal_achieved);
@@ -134,7 +132,8 @@ int saveWindowLog(int session_num, const WindowLog* log)
     return finishWrite(fp);
 }
 
-int loadSessions(Session* list, int max)
+// date, subject가 NULL이면 그 조건으로는 거르지 않음
+static int loadMatching(const char* date, const char* subject, Session* list, int max)
 {
     FILE* fp;
     char line[LINE_BUF_SIZE];
@@ -149,6 +148,10 @@ int loadSessions(Session* list, int max)
         if (skipLongLine(fp, line) || !parseSession(line, &s)) {
             continue;
         }
+        if ((date != NULL && strcmp(s.date, date) != 0)
+            || (subject != NULL && strcmp(s.subject, subject) != 0)) {
+            continue;
+        }
         if (count < max) {
             list[count] = s;
         }
@@ -156,6 +159,101 @@ int loadSessions(Session* list, int max)
     }
     fclose(fp);
     return count;
+}
+
+int loadSessions(Session* list, int max)
+{
+    return loadMatching(NULL, NULL, list, max);
+}
+
+int findSessionsByDate(const char* date, Session* list, int max)
+{
+    return loadMatching(date, NULL, list, max);
+}
+
+int findSessionsBySubject(const char* subject, Session* list, int max)
+{
+    return loadMatching(NULL, subject, list, max);
+}
+
+int getPrevDayStudySec(const char* date)
+{
+    struct tm day = {0};
+    char prev[11];
+    Session* list;
+    int count;
+    int found;
+    int total = 0;
+    int i;
+
+    if (sscanf_s(date, "%d-%d-%d", &day.tm_year, &day.tm_mon, &day.tm_mday) != 3) {
+        return -1;
+    }
+    day.tm_year -= 1900;
+    day.tm_mon -= 1;
+    // 1일에서 빼면 0일이 되는데 mktime이 전달 말일로 맞춰 줌 (윤년 포함)
+    day.tm_mday -= 1;
+    day.tm_hour = 12;
+    day.tm_isdst = -1;
+    if (mktime(&day) == -1) {
+        return -1;
+    }
+    strftime(prev, sizeof(prev), "%Y-%m-%d", &day);
+
+    // 하루 세션 수에 상한이 없어서 개수를 먼저 세고 그만큼 잡음
+    count = findSessionsByDate(prev, NULL, 0);
+    if (count == 0) {
+        return -1;
+    }
+    list = malloc(count * sizeof(Session));
+    if (list == NULL) {
+        return -1;
+    }
+    // 두 번 읽는 사이에 다른 창에서 저장하면 개수가 달라짐. 채운 칸까지만 더함
+    found = findSessionsByDate(prev, list, count);
+    if (found < count) {
+        count = found;
+    }
+    for (i = 0; i < count; i++) {
+        total += list[i].study_sec;
+    }
+    free(list);
+    return total;
+}
+
+// 최고 기록은 따로 저장하지 않고 부를 때마다 sessions.txt에서 찾음.
+// 새 세션이 저장되면 다음 호출부터 바로 반영됨
+int findBestSession(const char* subject, Session* best)
+{
+    Session* list;
+    int count;
+    int found;
+    int i;
+    int best_i = 0;
+
+    count = findSessionsBySubject(subject, NULL, 0);
+    if (count == 0) {
+        return 0;
+    }
+    list = malloc(count * sizeof(Session));
+    if (list == NULL) {
+        return 0;
+    }
+    found = findSessionsBySubject(subject, list, count);
+    if (found < count) {
+        count = found;
+    }
+    // 시간이 같으면 먼저 세운 기록을 남김
+    for (i = 1; i < count; i++) {
+        if (list[i].study_sec > list[best_i].study_sec) {
+            best_i = i;
+        }
+    }
+    if (count > 0) {
+        *best = list[best_i];
+    }
+    free(list);
+    return count > 0;
 }
 
 // 키워드와 과목은 배열 한 칸 크기만 달라서 width로 받아 같이 씀
@@ -240,4 +338,30 @@ int loadSubjects(char list[][SUBJECT_BUF], int max)
 int saveSubjects(char list[][SUBJECT_BUF], int count)
 {
     return writeLines(FILE_SUBJECTS, list[0], SUBJECT_BUF, count);
+}
+
+// 파일은 있는데 숫자가 아니면 -1. 0점으로 읽으면 point()가 그 위에 덮어써서 점수가 날아감
+int loadPoints(void)
+{
+    FILE* fp;
+    int total_points;
+    int ok;
+
+    if (fopen_s(&fp, FILE_POINTS, "r") != 0) {
+        return 0;
+    }
+    ok = fscanf_s(fp, "%d", &total_points) == 1;
+    fclose(fp);
+    return ok ? total_points : -1;
+}
+
+int savePoints(int total_points)
+{
+    FILE* fp;
+
+    if (fopen_s(&fp, FILE_POINTS, "w") != 0) {
+        return 0;
+    }
+    fprintf(fp, "%d\n", total_points);
+    return finishWrite(fp);
 }

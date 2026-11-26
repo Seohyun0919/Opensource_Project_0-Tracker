@@ -4,7 +4,6 @@
 #define COMMON_H
 
 // 길이는 글자 수. 배열은 UTF-8 한글 3바이트 기준으로 잡음
-#define MAX_NAME_LEN        20
 #define MAX_SUBJECT_LEN     20
 #define MAX_TITLE_LEN       256
 #define MAX_KEYWORDS        20
@@ -21,7 +20,6 @@
 
 typedef struct {
     int session_num;
-    char user_name[MAX_NAME_LEN * 3 + 1];
     // YYYY-MM-DD
     char date[11];
     char subject[MAX_SUBJECT_LEN * 3 + 1];

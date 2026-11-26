@@ -4,7 +4,6 @@
  
 #include "common.h"
  
-void input_user_name(char *user_name);
 void input_subject(char *subject);
  
 // 1~600 범위 밖이면 다시 물음. 입력이 끊기면(EOF) 1을 돌려줌
