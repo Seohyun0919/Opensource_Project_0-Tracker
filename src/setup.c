@@ -57,3 +57,42 @@ static void go_step(SetupState* s, SetupStep step)
     s->step = step;
     s->message[0] = '\0';
 }
+
+static void submit_pick(SetupState* s, const char* text)
+{
+    char* end;
+    long num;
+
+    if (text[0] == '\0') {
+        set_message(s, "번호를 입력해 주세요.");
+        return;
+    }
+    num = strtol(text, &end, 10);
+    // "2a"를 2번으로 읽으면 오타가 그대로 통과함
+    if (*end != '\0' || num < 0 || num > s->subject_count) {
+        set_message(s, "목록에 없는 번호입니다. 다시 입력해 주세요.");
+        return;
+    }
+    if (num == 0) {
+        go_step(s, SETUP_NEW_SUBJECT);
+    } else {
+        s->chosen = (int)num - 1;
+        go_step(s, SETUP_GOAL);
+    }
+}
+
+int setup_submit(SetupState* s, const char* line, Session* plan)
+{
+    char text[256];
+
+    snprintf(text, sizeof(text), "%s", line);
+    trim(text);
+    s->message[0] = '\0';
+
+    switch (s->step) {
+    case SETUP_PICK_SUBJECT:  submit_pick(s, text); break;
+    case SETUP_NEW_SUBJECT:   break;
+    case SETUP_GOAL:          break;
+    }
+    return 0;
+}
