@@ -1,71 +1,141 @@
+
 #include "raylib.h"
 #include "flow.h"
 #include "detect.h"
+#include "point.h"
 
-void flow_start(SessionFlow* f, const Session* plan)
-{
+static const Rectangle stopRect = {550, 420, 220, 40};
+static const Rectangle backRect = {550, 420, 220, 40};
+
+// 버튼 클릭 확인
+static int clicked(Rectangle rect) {
+    return CheckCollisionPointRec(
+        GetMousePosition(), rect
+    ) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+}
+
+// 버튼 출력
+static void draw_button(Rectangle rect, const char* text) {
+    int hover = CheckCollisionPointRec(
+        GetMousePosition(), rect
+    );
+
+    DrawRectangleRounded(
+        rect, 0.2f, 8,
+        hover ? DARKBLUE : BLUE
+    );
+
+    DrawText(
+        text,
+        rect.x + (rect.width - MeasureText(text, 20)) / 2,
+        rect.y + (rect.height - 20) / 2,
+        20, WHITE
+    );
+}
+
+// 학습 시작
+void flow_start(SessionFlow* f, const Session* plan) {
     f->rec = *plan;
+
     f->rec.study_sec = 0;
     f->rec.distract_sec = 0;
     f->rec.distract_count = 0;
     f->rec.goal_achieved = 0;
+
     f->prev_distract_sec = 0;
     f->distracting = 0;
     f->warn_keyword = -1;
+
     f->rec.session_num = getNextSessionNum();
     f->save_ok = 0;
-    
+
     f->state = FLOW_STUDY;
     f->last_tick = GetTime();
+
     start_timer(&f->timer, f->last_tick);
 }
 
-void flow_update(SessionFlow* f)
-{
+// 학습 상태 갱신
+void flow_update(SessionFlow* f) {
+
     if (f->state == FLOW_STUDY) {
         double now = GetTime();
-        int quit = IsKeyPressed(KEY_Q);
 
-        // 1초가 지났을 때만 타이머·감지 갱신 (Sleep 사용 안 함)
+        int quit = IsKeyPressed(KEY_Q)
+                   || clicked(stopRect);
+
+        // 1초마다 타이머 및 이탈 감지 갱신
         if (now - f->last_tick >= 1.0 || quit) {
             f->last_tick = now;
+
             update_timer(&f->timer, &f->rec, now);
 
-            f->distracting = (f->rec.distract_sec > f->prev_distract_sec);
+            f->distracting =
+                f->rec.distract_sec > f->prev_distract_sec;
+
             f->prev_distract_sec = f->rec.distract_sec;
-            f->warn_keyword = f->distracting ? detect_current_window() : -1;
+
+            f->warn_keyword = f->distracting
+                ? detect_current_window() : -1;
         }
+
+        // 공부 종료
         if (quit) {
+            f->rec.goal_achieved =
+                f->rec.study_sec >= f->rec.goal_min * 60;
+
             f->save_ok = saveSession(&f->rec);
             f->state = FLOW_RESULT;
         }
     }
+
     else if (f->state == FLOW_RESULT) {
-        if (IsKeyPressed(KEY_ENTER)) {
+        if (IsKeyPressed(KEY_ENTER) || clicked(backRect)) {
             f->state = FLOW_DONE;
         }
     }
 }
 
-//이후 feature/ui-raylib 함수 이름으로 교체
-void flow_draw(const SessionFlow* f)
-{
+// 학습 화면 출력
+void flow_draw(const SessionFlow* f) {
+
     if (f->state == FLOW_STUDY) {
-        if (f->distracting)
+
+        if (f->distracting) {
             draw_warning_screen(f->warn_keyword);
-        
-        else
-            draw_study_screen(f->rec.subject, f->rec.goal_min,
-                              f->rec.study_sec, f->rec.distract_sec,
-                              f->rec.distract_count);
+        }
+
+        else {
+            draw_study_screen(
+                f->rec.subject,
+                f->rec.goal_min,
+                f->rec.study_sec,
+                f->rec.distract_sec,
+                f->rec.distract_count
+            );
+        }
+
+        draw_button(stopRect, "Stop Study (Q)");
     }
 
-    // flow_draw에 결과 화면 추가 (포인트는 levelup 전까지 테스트 값)
     else if (f->state == FLOW_RESULT) {
-        draw_result_screen(f->rec.subject, f->rec.goal_min,
-                           f->rec.study_sec, f->rec.distract_sec,
-                           f->rec.distract_count, 320, 30, 0, 1291);
+
+        draw_result_screen(
+            f->rec.subject,
+            f->rec.goal_min,
+            f->rec.study_sec,
+            f->rec.distract_sec,
+            f->rec.distract_count,
+            earn(f->rec.study_sec),
+            penalty(f->rec.distract_sec),
+            0,
+            earn(f->rec.study_sec) -
+            penalty(f->rec.distract_sec)
+        );
+
         if (!f->save_ok)
-            draw_save_error();   // 이후 feature/ui-raylib 함수 이름으로 교체
+            draw_save_error();
+
+        draw_button(backRect, "Back to Menu");
     }
 }
