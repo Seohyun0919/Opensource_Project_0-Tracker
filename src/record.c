@@ -134,7 +134,8 @@ int saveWindowLog(int session_num, const WindowLog* log)
     return finishWrite(fp);
 }
 
-int loadSessions(Session* list, int max)
+// date, subject가 NULL이면 그 조건으로는 거르지 않음
+static int loadMatching(const char* date, const char* subject, Session* list, int max)
 {
     FILE* fp;
     char line[LINE_BUF_SIZE];
@@ -149,6 +150,10 @@ int loadSessions(Session* list, int max)
         if (skipLongLine(fp, line) || !parseSession(line, &s)) {
             continue;
         }
+        if ((date != NULL && strcmp(s.date, date) != 0)
+            || (subject != NULL && strcmp(s.subject, subject) != 0)) {
+            continue;
+        }
         if (count < max) {
             list[count] = s;
         }
@@ -156,6 +161,21 @@ int loadSessions(Session* list, int max)
     }
     fclose(fp);
     return count;
+}
+
+int loadSessions(Session* list, int max)
+{
+    return loadMatching(NULL, NULL, list, max);
+}
+
+int findSessionsByDate(const char* date, Session* list, int max)
+{
+    return loadMatching(date, NULL, list, max);
+}
+
+int findSessionsBySubject(const char* subject, Session* list, int max)
+{
+    return loadMatching(NULL, subject, list, max);
 }
 
 // 키워드와 과목은 배열 한 칸 크기만 달라서 width로 받아 같이 씀
