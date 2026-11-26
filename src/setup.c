@@ -21,3 +21,39 @@ void setup_init(SetupState* s)
     s->chosen = -1;
     s->step = SETUP_PICK_SUBJECT;
 }
+
+//입력 문자열 검사 함수 추가
+// 한글이 3바이트라 strlen으로는 20자 제한을 못 잼. 이어붙는 바이트(10xxxxxx)는 세지 않음
+static int utf8_len(const char* str)
+{
+    int n = 0;
+    for (; *str; str++) {
+        if (((unsigned char)*str & 0xC0) != 0x80) n++;
+    }
+    return n;
+}
+
+// fgets가 남기는 개행과 앞뒤 공백을 지움
+static void trim(char* str)
+{
+    char* start = str;
+    int len;
+    while (*start == ' ' || *start == '\t') start++;
+    memmove(str, start, strlen(start) + 1);
+    len = (int)strlen(str);
+    while (len > 0 && (str[len - 1] == ' ' || str[len - 1] == '\t'
+                       || str[len - 1] == '\n' || str[len - 1] == '\r')) {
+        str[--len] = '\0';
+    }
+}
+
+static void set_message(SetupState* s, const char* msg)
+{
+    snprintf(s->message, sizeof(s->message), "%s", msg);
+}
+
+static void go_step(SetupState* s, SetupStep step)
+{
+    s->step = step;
+    s->message[0] = '\0';
+}
