@@ -18,6 +18,7 @@
                 "${workspaceFolder}\\src\\result_ui.c",
                 "${workspaceFolder}\\src\\detect.c",
                 "${workspaceFolder}\\src\\keyword.c",
+                "${workspaceFolder}\\src\\record.c",
                 "${workspaceFolder}\\src\\point.c",
                 "user32.lib"
             ],
