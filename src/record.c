@@ -224,6 +224,41 @@ int getPrevDayStudySec(const char* date)
     return total;
 }
 
+// 최고 기록은 따로 저장하지 않고 부를 때마다 sessions.txt에서 찾음.
+// 새 세션이 저장되면 다음 호출부터 바로 반영됨
+int findBestSession(const char* subject, Session* best)
+{
+    Session* list;
+    int count;
+    int found;
+    int i;
+    int best_i = 0;
+
+    count = findSessionsBySubject(subject, NULL, 0);
+    if (count == 0) {
+        return 0;
+    }
+    list = malloc(count * sizeof(Session));
+    if (list == NULL) {
+        return 0;
+    }
+    found = findSessionsBySubject(subject, list, count);
+    if (found < count) {
+        count = found;
+    }
+    // 시간이 같으면 먼저 세운 기록을 남김
+    for (i = 1; i < count; i++) {
+        if (list[i].study_sec > list[best_i].study_sec) {
+            best_i = i;
+        }
+    }
+    if (count > 0) {
+        *best = list[best_i];
+    }
+    free(list);
+    return count > 0;
+}
+
 // 키워드와 과목은 배열 한 칸 크기만 달라서 width로 받아 같이 씀
 static int writeLines(const char* file, const char* list, size_t width, int count)
 {
