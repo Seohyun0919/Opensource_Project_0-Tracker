@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "common.h"
 
 #define SESSION_FIELDS 9
@@ -176,6 +177,51 @@ int findSessionsByDate(const char* date, Session* list, int max)
 int findSessionsBySubject(const char* subject, Session* list, int max)
 {
     return loadMatching(NULL, subject, list, max);
+}
+
+int getPrevDayStudySec(const char* date)
+{
+    struct tm day = {0};
+    char prev[11];
+    Session* list;
+    int count;
+    int found;
+    int total = 0;
+    int i;
+
+    if (sscanf_s(date, "%d-%d-%d", &day.tm_year, &day.tm_mon, &day.tm_mday) != 3) {
+        return -1;
+    }
+    day.tm_year -= 1900;
+    day.tm_mon -= 1;
+    // 1일에서 빼면 0일이 되는데 mktime이 전달 말일로 맞춰 줌 (윤년 포함)
+    day.tm_mday -= 1;
+    day.tm_hour = 12;
+    day.tm_isdst = -1;
+    if (mktime(&day) == -1) {
+        return -1;
+    }
+    strftime(prev, sizeof(prev), "%Y-%m-%d", &day);
+
+    // 하루 세션 수에 상한이 없어서 개수를 먼저 세고 그만큼 잡음
+    count = findSessionsByDate(prev, NULL, 0);
+    if (count == 0) {
+        return -1;
+    }
+    list = malloc(count * sizeof(Session));
+    if (list == NULL) {
+        return -1;
+    }
+    // 두 번 읽는 사이에 다른 창에서 저장하면 개수가 달라짐. 채운 칸까지만 더함
+    found = findSessionsByDate(prev, list, count);
+    if (found < count) {
+        count = found;
+    }
+    for (i = 0; i < count; i++) {
+        total += list[i].study_sec;
+    }
+    free(list);
+    return total;
 }
 
 // 키워드와 과목은 배열 한 칸 크기만 달라서 width로 받아 같이 씀
