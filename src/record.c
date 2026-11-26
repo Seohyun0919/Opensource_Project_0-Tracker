@@ -342,3 +342,29 @@ int saveSubjects(char list[][SUBJECT_BUF], int count)
 {
     return writeLines(FILE_SUBJECTS, list[0], SUBJECT_BUF, count);
 }
+
+// 파일은 있는데 숫자가 아니면 -1. 0점으로 읽으면 point()가 그 위에 덮어써서 점수가 날아감
+int loadPoints(void)
+{
+    FILE* fp;
+    int total_points;
+    int ok;
+
+    if (fopen_s(&fp, FILE_POINTS, "r") != 0) {
+        return 0;
+    }
+    ok = fscanf_s(fp, "%d", &total_points) == 1;
+    fclose(fp);
+    return ok ? total_points : -1;
+}
+
+int savePoints(int total_points)
+{
+    FILE* fp;
+
+    if (fopen_s(&fp, FILE_POINTS, "w") != 0) {
+        return 0;
+    }
+    fprintf(fp, "%d\n", total_points);
+    return finishWrite(fp);
+}
