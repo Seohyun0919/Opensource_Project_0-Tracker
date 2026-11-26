@@ -6,7 +6,7 @@
 #include <time.h>
 #include "common.h"
 
-#define SESSION_FIELDS 9
+#define SESSION_FIELDS 8
 // 세션 줄은 모든 칸을 최대로 채워도 210바이트 안쪽. 키워드, 과목 줄은 더 짧음
 // 주의: 창 전환 줄은 제목만 768바이트라 읽을 때는 더 큰 버퍼가 필요함
 #define LINE_BUF_SIZE 512
@@ -72,14 +72,13 @@ static int parseSession(char* line, Session* s)
     }
 
     s->session_num = atoi(fields[0]);
-    strncpy_s(s->user_name, sizeof(s->user_name), fields[1], _TRUNCATE);
-    strncpy_s(s->date, sizeof(s->date), fields[2], _TRUNCATE);
-    strncpy_s(s->subject, sizeof(s->subject), fields[3], _TRUNCATE);
-    s->goal_min = atoi(fields[4]);
-    s->study_sec = atoi(fields[5]);
-    s->distract_sec = atoi(fields[6]);
-    s->distract_count = atoi(fields[7]);
-    s->goal_achieved = atoi(fields[8]);
+    strncpy_s(s->date, sizeof(s->date), fields[1], _TRUNCATE);
+    strncpy_s(s->subject, sizeof(s->subject), fields[2], _TRUNCATE);
+    s->goal_min = atoi(fields[3]);
+    s->study_sec = atoi(fields[4]);
+    s->distract_sec = atoi(fields[5]);
+    s->distract_count = atoi(fields[6]);
+    s->goal_achieved = atoi(fields[7]);
     return 1;
 }
 
@@ -113,9 +112,7 @@ int saveSession(const Session* s)
     if (fopen_s(&fp, FILE_SESSIONS, "a") != 0) {
         return 0;
     }
-    fprintf(fp, "%d\t", s->session_num);
-    writeField(fp, s->user_name);
-    fprintf(fp, "\t%s\t", s->date);
+    fprintf(fp, "%d\t%s\t", s->session_num, s->date);
     writeField(fp, s->subject);
     fprintf(fp, "\t%d\t%d\t%d\t%d\t%d\n", s->goal_min, s->study_sec,
             s->distract_sec, s->distract_count, s->goal_achieved);
