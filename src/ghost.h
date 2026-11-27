@@ -20,7 +20,7 @@ typedef struct
 
 int build_timeline(const WindowLog list[], int count, int timeline[], int max_min);
 int load_ghost(const char* subject, Session* best, int best_timeline[], int* best_min);
-// 학습을 시장할 때 부름 
+// 학습을 시작할 때 부름 
 int init_ghost(const char* subject);
 // 1초마다 부름 -> 메세지를 띄울 게 없다면 NULL
 const char* update_ghost(const Session* rec, int elapsed);
