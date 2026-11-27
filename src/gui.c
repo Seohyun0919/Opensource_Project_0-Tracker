@@ -40,13 +40,20 @@ static void center_text(const char* str, float y,
 // 상단 헤더
 static void header(const char* title) {
 
+    Rectangle r = {24, 24, 752, 88};
+
     DrawRectangleRounded(
-        (Rectangle){24, 24, 752, 88},
-        0.25f, 10, UI_PRIMARY
+        r, 0.25f, 10, UI_PRIMARY
+    );
+
+    Vector2 t = MeasureTextEx(
+        gui_font, title,
+        UI_FONT_TITLE, UI_FONT_SPACING
     );
 
     center_text(
-        title, 34,
+        title,
+        r.y + (r.height - t.y) / 2,
         UI_FONT_TITLE, UI_WHITE
     );
 }
@@ -116,18 +123,166 @@ static void progress_bar(Rectangle r, float progress) {
         );
     }
 }
+// 이미 등록된 과목인지 확인
+static int find_subject(const SetupState* s, const char* name) {
+
+    for (int i = 0; i < s->subject_count; i++) {
+        if (strcmp(s->subjects[i], name) == 0)
+            return i;
+    }
+
+    return -1;
+}
+
+// 기존 학습 기록에서 과목 추출
+static void import_subjects(SetupState* s) {
+
+    int count = loadSessions(NULL, 0);
+
+    if (count <= 0)
+        return;
+
+    Session* list = malloc(sizeof(Session) * count);
+
+    if (list == NULL)
+        return;
+
+    int loaded = loadSessions(list, count);
+    int changed = 0;
+
+    if (loaded > count)
+        loaded = count;
+
+    for (int i = 0; i < loaded; i++) {
+
+        if (s->subject_count >= MAX_SUBJECTS)
+            break;
+
+        if (list[i].subject[0] != '\0' &&
+            find_subject(s, list[i].subject) == -1) {
+
+            strcpy(
+                s->subjects[s->subject_count],
+                list[i].subject
+            );
+
+            s->subject_count++;
+            changed = 1;
+        }
+    }
+
+    free(list);
+
+    // 추가된 과목 목록 저장
+    if (changed) {
+        if (!saveSubjects(s->subjects, s->subject_count))
+            strcpy(s->error, "과목 목록 저장 실패");
+    }
+}
+
+// 새로운 과목 추가 및 저장
+static int add_subject(SetupState* s) {
+
+    // 빈 과목명 검사
+    if (s->new_subject[0] == '\0' ||
+        strspn(s->new_subject, " \t") == strlen(s->new_subject)) {
+
+        strcpy(s->error, "과목명을 입력하세요.");
+        return 0;
+    }
+
+    // 중복 과목 검사
+    if (find_subject(s, s->new_subject) != -1) {
+        strcpy(s->error, "이미 등록된 과목입니다.");
+        return 0;
+    }
+
+    // 최대 과목 개수 검사
+    if (s->subject_count >= MAX_SUBJECTS) {
+        strcpy(s->error, "과목 목록이 가득 찼습니다.");
+        return 0;
+    }
+
+    // 과목 목록에 추가
+    strcpy(
+        s->subjects[s->subject_count],
+        s->new_subject
+    );
+
+    s->subject_count++;
+
+    // 파일 저장
+    if (!saveSubjects(s->subjects, s->subject_count)) {
+        s->subject_count--;
+        strcpy(s->error, "과목 저장에 실패했습니다.");
+        return 0;
+    }
+
+    // 새로 추가한 과목 자동 선택
+    s->selected_subject = s->subject_count - 1;
+
+    strcpy(s->subject, s->new_subject);
+
+    // 과목 추가창 초기화
+    s->new_subject[0] = '\0';
+    s->error[0] = '\0';
+    s->adding_subject = 0;
+    s->active_field = 0;
+
+    return 1;
+}
 
 // 학습 계획 초기화
 void setup_init(SetupState* s) {
     memset(s, 0, sizeof(*s));
-    s->active_field = 1;
+
+    // 등록된 과목 목록 불러오기
+    s->subject_count = loadSubjects(
+        s->subjects, MAX_SUBJECTS
+    );
+
+    import_subjects(s);
+
+    // 아직 과목을 선택하지 않은 상태
+    s->selected_subject = -1;
+
+    // 과목 추가 상태 초기화
+    s->adding_subject = 0;
+
+    // 스크롤 위치 초기화
+    s->scroll = 0;
+
+    // 입력창 선택 초기화
+    s->active_field = 0;
+
+    s->dropdown_open = 0;
+    strcpy(s->goal, "60");
 }
 
-// 입력창 위치
-static const Rectangle subject_rect = {36, 165, 728, 50};
-static const Rectangle goal_rect = {36, 275, 728, 50};
-static const Rectangle start_rect = {410, 397, 354, 52};
-static const Rectangle back_rect = {36, 397, 354, 52};
+// 과목 선택
+static const Rectangle dropdown_rect = {160, 120, 480, 52};
+static const Rectangle subject_list_rect = {160, 172, 480, 210};
+static const Rectangle add_rect = {250, 180, 300, 35};
+
+// 목표 시간
+static const Rectangle goal_rect = {310, 260, 180, 85};
+static const Rectangle minus_rect = {247, 277, 46, 46};
+static const Rectangle plus_rect = {507, 277, 46, 46};
+
+// 빠른 시간 선택
+static const int preset_minutes[] = {25, 30, 60, 120};
+
+// 화면 이동
+static const Rectangle back_rect = {24, 32, 50, 50};
+static const Rectangle start_rect = {36, 420, 728, 44};
+
+// 과목 추가창
+static const Rectangle new_subject_rect = {150, 195, 500, 50};
+static const Rectangle confirm_rect = {410, 275, 240, 50};
+static const Rectangle cancel_rect = {150, 275, 240, 50};
+
+#define VISIBLE_SUBJECTS 5
+#define SUBJECT_ROW_HEIGHT 42
 
 // 입력창 출력
 static void input_box(Rectangle r, const char* str,
@@ -144,95 +299,293 @@ static void input_box(Rectangle r, const char* str,
          UI_FONT_BODY, UI_TEXT);
 }
 
-// 학습 계획 입력 처리
-int setup_update(SetupState* s, Session* rec) {
+// 문자열 입력 및 삭제 처리
+static void edit_input(char* buf, int capacity,
+                       int max_chars, int number_only) {
 
-    // 입력창 선택
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        Vector2 mouse = GetMousePosition();
-
-        if (CheckCollisionPointRec(mouse, subject_rect))
-            s->active_field = 1;
-
-        else if (CheckCollisionPointRec(mouse, goal_rect))
-            s->active_field = 2;
-    }
-
-    // Tab으로 입력창 이동
-    if (IsKeyPressed(KEY_TAB))
-        s->active_field = s->active_field == 1 ? 2 : 1;
-
-    char* buf = s->active_field == 1 ?
-                s->subject : s->goal;
-
-    // 문자 입력
     int ch = GetCharPressed();
 
     while (ch > 0) {
-
         int len = strlen(buf);
 
-        if (s->active_field == 1 &&
-            ch >= 32 && ch <= 0xFFFF &&
-            GetCodepointCount(buf) < MAX_SUBJECT_LEN) {
+        if (ch >= 32 && ch <= 0xFFFF &&
+            GetCodepointCount(buf) < max_chars &&
+            (!number_only || (ch >= '0' && ch <= '9'))) {
 
             int bytes;
             const char* utf8 = CodepointToUTF8(ch, &bytes);
 
-            if (len + bytes < sizeof(s->subject)) {
+            if (len + bytes < capacity) {
                 memcpy(buf + len, utf8, bytes);
                 buf[len + bytes] = '\0';
             }
         }
 
-        else if (s->active_field == 2 &&
-                 ch >= '0' && ch <= '9' &&
-                 len < 3) {
-
-            buf[len] = (char)ch;
-            buf[len + 1] = '\0';
-        }
-
         ch = GetCharPressed();
     }
 
-    // Backspace
+    // Backspace 처리
     if (IsKeyPressed(KEY_BACKSPACE)) {
-
         int len = strlen(buf);
 
         if (len > 0) {
             len--;
 
             while (len > 0 &&
-                  ((unsigned char)buf[len] & 0xC0) == 0x80)
+                   ((unsigned char)buf[len] & 0xC0) == 0x80)
                 len--;
 
             buf[len] = '\0';
         }
     }
+}
 
-    // 메인으로 돌아가기
-    if (IsKeyPressed(KEY_ESCAPE) ||
-        (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-         CheckCollisionPointRec(GetMousePosition(), back_rect)))
+// 버튼 클릭 검사
+static int clicked(Rectangle r) {
+    return IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+           CheckCollisionPointRec(GetMousePosition(), r);
+}
+
+// 과목명 앞뒤 공백 제거
+static void trim_subject(char* str) {
+
+    int start = strspn(str, " \t");
+
+    memmove(str, str + start, strlen(str + start) + 1);
+
+    int len = strlen(str);
+
+    while (len > 0 &&
+           (str[len - 1] == ' ' || str[len - 1] == '\t')) {
+
+        str[--len] = '\0';
+    }
+}
+
+// 목표 시간 설정 (1~600분)
+static void set_goal(SetupState* s, int minutes) {
+
+    if (minutes < 1)
+        minutes = 1;
+
+    if (minutes > 600)
+        minutes = 600;
+
+    snprintf(s->goal, sizeof(s->goal),
+             "%d", minutes);
+
+    s->error[0] = '\0';
+}
+
+int setup_update(SetupState* s, Session* rec) {
+
+    // 과목 추가창이 열린 상태
+    if (s->adding_subject) {
+
+        edit_input(
+            s->new_subject,
+            sizeof(s->new_subject),
+            MAX_SUBJECT_LEN, 0
+        );
+
+        // 과목 추가 취소
+        if (clicked(cancel_rect) ||
+            IsKeyPressed(KEY_ESCAPE)) {
+
+            s->adding_subject = 0;
+            s->new_subject[0] = '\0';
+            s->error[0] = '\0';
+
+            return 0;
+        }
+
+        // 과목 추가 완료
+        if (clicked(confirm_rect) ||
+            IsKeyPressed(KEY_ENTER)) {
+
+            trim_subject(s->new_subject);
+
+            if (add_subject(s)) {
+                s->dropdown_open = 0;
+            }
+        }
+
+        return 0;
+    }
+
+    // 드롭다운 열기 및 닫기
+    if (clicked(dropdown_rect)) {
+
+        s->dropdown_open = !s->dropdown_open;
+        s->active_field = 0;
+        s->error[0] = '\0';
+
+        return 0;
+    }
+
+    // 과목 선택 목록이 열린 상태
+    if (s->dropdown_open) {
+
+        // 마우스 휠 스크롤
+        if (CheckCollisionPointRec(
+            GetMousePosition(), subject_list_rect)) {
+
+            float wheel = GetMouseWheelMove();
+
+            if (wheel > 0)
+                s->scroll--;
+
+            else if (wheel < 0)
+                s->scroll++;
+
+            int max_scroll =
+                s->subject_count - VISIBLE_SUBJECTS;
+
+            if (max_scroll < 0)
+                max_scroll = 0;
+
+            if (s->scroll < 0)
+                s->scroll = 0;
+
+            if (s->scroll > max_scroll)
+                s->scroll = max_scroll;
+        }
+
+        // 과목 선택
+        for (int i = 0; i < VISIBLE_SUBJECTS; i++) {
+
+            int index = s->scroll + i;
+
+            if (index >= s->subject_count)
+                break;
+
+            Rectangle r = {
+                160,
+                172 + i * SUBJECT_ROW_HEIGHT,
+                480,
+                SUBJECT_ROW_HEIGHT
+            };
+
+            if (clicked(r)) {
+
+                s->selected_subject = index;
+
+                strcpy(s->subject, s->subjects[index]);
+
+                s->dropdown_open = 0;
+                s->error[0] = '\0';
+
+                return 0;
+            }
+        }
+
+        // 목록 외부를 클릭하면 닫기
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
+            IsKeyPressed(KEY_ESCAPE)) {
+
+            s->dropdown_open = 0;
+        }
+
+        return 0;
+    }
+
+    // 메인 메뉴 복귀
+    if (clicked(back_rect) ||
+        IsKeyPressed(KEY_ESCAPE))
         return -1;
 
+    // 새로운 과목 추가
+    if (clicked(add_rect)) {
+
+        s->adding_subject = 1;
+        s->new_subject[0] = '\0';
+        s->error[0] = '\0';
+        s->active_field = 0;
+
+        return 0;
+    }
+
+    // 목표 시간 직접 입력
+    if (clicked(goal_rect)) {
+        s->active_field = 2;
+        s->error[0] = '\0';
+    }
+    else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        s->active_field = 0;
+    }
+
+    if (s->active_field == 2) {
+
+        edit_input(
+            s->goal,
+            sizeof(s->goal),
+            3, 1
+        );
+    }
+
+    // 목표 시간 5분 감소
+    if (clicked(minus_rect)) {
+
+        set_goal(s, atoi(s->goal) - 5);
+        s->active_field = 0;
+    }
+
+    // 목표 시간 5분 증가
+    if (clicked(plus_rect)) {
+
+        set_goal(s, atoi(s->goal) + 5);
+        s->active_field = 0;
+    }
+
+    // 빠른 시간 선택 버튼
+    for (int i = 0; i < 4; i++) {
+
+        Rectangle r = {
+            205 + i * 100,
+            365,
+            90,
+            34
+        };
+
+        if (clicked(r)) {
+
+            set_goal(s, preset_minutes[i]);
+            s->active_field = 0;
+        }
+    }
+
     // 공부 시작
-    if (IsKeyPressed(KEY_ENTER) ||
-        (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-         CheckCollisionPointRec(GetMousePosition(), start_rect))) {
+    if (clicked(start_rect) ||
+        IsKeyPressed(KEY_ENTER)) {
 
         int goal = atoi(s->goal);
 
-        if (s->subject[0] == '\0' ||
-            goal < 1 || goal > 600)
-            return 0;
+        // 과목 선택 검사
+        if (s->selected_subject < 0 ||
+            s->selected_subject >= s->subject_count) {
 
+            strcpy(s->error, "과목을 선택하세요.");
+
+            return 0;
+        }
+
+        // 목표 시간 검사
+        if (goal < 1 || goal > 600) {
+
+            strcpy(s->error, "목표 시간은 1~600분입니다.");
+
+            return 0;
+        }
+
+        // 학습 정보 저장
         memset(rec, 0, sizeof(*rec));
 
         strcpy(rec->user_name, "User");
-        strcpy(rec->subject, s->subject);
+
+        strcpy(
+            rec->subject,
+            s->subjects[s->selected_subject]
+        );
 
         rec->goal_min = goal;
 
@@ -241,8 +594,11 @@ int setup_update(SetupState* s, Session* rec) {
         struct tm* t = localtime(&now);
 
         if (t != NULL)
-            strftime(rec->date, sizeof(rec->date),
-                     "%Y-%m-%d", t);
+            strftime(
+                rec->date,
+                sizeof(rec->date),
+                "%Y-%m-%d", t
+            );
 
         return 1;
     }
@@ -253,25 +609,192 @@ int setup_update(SetupState* s, Session* rec) {
 // 학습 계획 화면 출력
 void setup_draw(const SetupState* s) {
 
-    header("학습 계획 설정");
+    char buf[128];
 
-    text("공부 제목", 36, 125,
-         UI_FONT_BODY, UI_TEXT);
+    // 상단 제목
+    center_text("0:Tracker", 30, 38, UI_PRIMARY);
 
-    input_box(subject_rect, s->subject,
-              s->active_field == 1);
+    // 뒤로 가기 화살표
+    DrawLineEx((Vector2){36, 57},
+               (Vector2){64, 57}, 3, UI_PRIMARY);
 
-    text("목표 공부 시간 (분)", 36, 235,
-         UI_FONT_BODY, UI_TEXT);
+    DrawLineEx((Vector2){36, 57},
+               (Vector2){48, 45}, 3, UI_PRIMARY);
 
-    input_box(goal_rect, s->goal,
-              s->active_field == 2);
+    DrawLineEx((Vector2){36, 57},
+               (Vector2){48, 69}, 3, UI_PRIMARY);
 
-    text("1~600분 사이로 입력하세요.",
-         36, 340, 20, UI_MUTED);
+    // 과목 선택 안내
+    center_text("SELECT SUBJECT", 88, 17, UI_MUTED);
 
-    button(back_rect, "메인으로");
-    button(start_rect, "공부 시작");
+    // 과목 선택 드롭다운
+    DrawRectangleRounded(
+        dropdown_rect, 0.9f, 16, UI_SURFACE
+    );
+
+    const char* selected = "과목을 선택하세요";
+
+    if (s->selected_subject >= 0 &&
+        s->selected_subject < s->subject_count)
+        selected = s->subjects[s->selected_subject];
+
+    BeginScissorMode(180, 120, 400, 52);
+    center_text(selected, 132, 25, UI_TEXT);
+    EndScissorMode();
+
+    // 드롭다운 화살표
+    DrawLineEx((Vector2){602, 140},
+               (Vector2){610, 148}, 3, UI_PRIMARY);
+
+    DrawLineEx((Vector2){610, 148},
+               (Vector2){618, 140}, 3, UI_PRIMARY);
+
+    // 새로운 과목 추가
+    center_text("+ 새로운 과목 추가",
+                183, 20, UI_PRIMARY);
+
+    // 목표 시간
+    center_text("목표 공부 시간",
+                230, 22, UI_MUTED);
+
+    // 시간 감소 버튼
+    DrawCircle(270, 300, 23, UI_SURFACE);
+    DrawLineEx((Vector2){260, 300},
+               (Vector2){280, 300}, 3, UI_PRIMARY);
+
+    // 시간 증가 버튼
+    DrawCircle(530, 300, 23, UI_SURFACE);
+    DrawLineEx((Vector2){520, 300},
+               (Vector2){540, 300}, 3, UI_PRIMARY);
+    DrawLineEx((Vector2){530, 290},
+               (Vector2){530, 310}, 3, UI_PRIMARY);
+
+    // 목표 시간 숫자
+    center_text(s->goal, 258, 80, UI_PRIMARY);
+
+    // 직접 입력 중인 경우 밑줄 표시
+    if (s->active_field == 2)
+        DrawLine(325, 340, 475, 340, UI_PRIMARY);
+
+    center_text("MINUTES", 342, 15, UI_MUTED);
+
+    // 빠른 시간 선택 버튼
+    for (int i = 0; i < 4; i++) {
+
+        Rectangle r = {
+            205 + i * 100, 365, 90, 34
+        };
+
+        int active = atoi(s->goal) == preset_minutes[i];
+
+        DrawRectangleRounded(
+            r, 1.0f, 12,
+            active ? UI_HOVER : UI_SURFACE
+        );
+
+        snprintf(buf, sizeof(buf),
+                 "%d분", preset_minutes[i]);
+
+        Vector2 t = MeasureTextEx(
+            gui_font, buf, 18, UI_FONT_SPACING
+        );
+
+        text(buf,
+             r.x + (r.width - t.x) / 2,
+             r.y + (r.height - t.y) / 2,
+             18, UI_PRIMARY);
+    }
+
+    // 공부 시작 버튼
+    DrawRectangleRounded(
+        start_rect, 0.4f, 12,
+        CheckCollisionPointRec(
+            GetMousePosition(), start_rect
+        ) ? UI_PRIMARY_DARK : UI_PRIMARY
+    );
+
+    center_text("공부 시작", 428, 26, UI_WHITE);
+
+    // 오류 메시지
+    if (s->error[0] != '\0')
+        center_text(s->error, 400, 16, UI_DISTRACT);
+
+    // 드롭다운 목록
+    if (s->dropdown_open) {
+
+        DrawRectangleRounded(
+            subject_list_rect, 0.08f, 10, UI_SURFACE
+        );
+
+        DrawRectangleLinesEx(
+            subject_list_rect, 1, UI_BORDER
+        );
+
+        if (s->subject_count == 0)
+            center_text("등록된 과목이 없습니다.",
+                        250, 22, UI_MUTED);
+
+        for (int i = 0; i < VISIBLE_SUBJECTS; i++) {
+
+            int index = s->scroll + i;
+
+            if (index >= s->subject_count)
+                break;
+
+            Rectangle r = {
+                160,
+                172 + i * SUBJECT_ROW_HEIGHT,
+                480,
+                SUBJECT_ROW_HEIGHT
+            };
+
+            if (index == s->selected_subject ||
+                CheckCollisionPointRec(GetMousePosition(), r))
+                DrawRectangleRec(r, UI_HOVER);
+
+            BeginScissorMode(
+                (int)r.x, (int)r.y,
+                (int)r.width, (int)r.height
+            );
+
+            text(s->subjects[index],
+                 r.x + 20, r.y + 9,
+                 23, UI_TEXT);
+
+            EndScissorMode();
+        }
+    }
+
+    // 새로운 과목 추가 팝업
+    if (s->adding_subject) {
+
+        // 배경 어둡게 처리
+        DrawRectangle(
+            0, 0, UI_WIDTH, UI_HEIGHT,
+            (Color){0, 0, 0, 100}
+        );
+
+        // 팝업 배경
+        DrawRectangleRounded(
+            (Rectangle){120, 120, 560, 270},
+            0.12f, 12, UI_BG
+        );
+
+        center_text("새로운 과목 추가",
+                    145, 30, UI_PRIMARY);
+
+        input_box(
+            new_subject_rect,
+            s->new_subject, 1
+        );
+
+        button(cancel_rect, "취소");
+        button(confirm_rect, "추가");
+
+        if (s->error[0] != '\0')
+            center_text(s->error,
+                        345, 18, UI_DISTRACT);
+    }
 }
 
 // 학습 진행 화면

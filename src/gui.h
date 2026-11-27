@@ -4,11 +4,31 @@
 #include "raylib.h"
 #include "common.h"
 
+#ifndef MAX_SUBJECTS
+#define MAX_SUBJECTS 100
+#endif
 // 학습 계획 입력 상태
 typedef struct {
     char subject[MAX_SUBJECT_LEN * 3 + 1];
     char goal[4];
     int active_field;
+
+    // 과목 목록
+    char subjects[MAX_SUBJECTS][MAX_SUBJECT_LEN * 3 + 1];
+    int subject_count;
+    int selected_subject;
+
+    // 과목 추가
+    char new_subject[MAX_SUBJECT_LEN * 3 + 1];
+    int adding_subject;
+
+    // 과목 목록 스크롤
+    int scroll;
+    int dropdown_open;  // 과목 선택 목록 열림 여부
+
+    // 오류 안내
+    char error[128];    
+
 } SetupState;
 
 // GUI 초기화 및 종료

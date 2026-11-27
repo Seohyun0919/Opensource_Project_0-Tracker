@@ -121,7 +121,7 @@ void flow_draw(const SessionFlow* f) {
             );
         }
 
-        draw_button(stopRect, "Stop Study (Q)");
+        draw_button(stopRect, "Stop Study");
     }
 
     else if (f->state == FLOW_RESULT) {

@@ -119,7 +119,7 @@ static void load_font(void) {
 
     font = LoadFontEx(
         UI_FONT_PATH,
-        32,
+        64,
         chars, n
     );
 
