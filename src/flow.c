@@ -1,8 +1,9 @@
-
 #include "raylib.h"
 #include "flow.h"
 #include "detect.h"
 #include "point.h"
+#include "gui.h"
+#include "ui_color.h"
 
 static const Rectangle stopRect = {550, 420, 220, 40};
 static const Rectangle backRect = {550, 420, 220, 40};
@@ -22,7 +23,7 @@ static void draw_button(Rectangle rect, const char* text) {
 
     DrawRectangleRounded(
         rect, 0.2f, 8,
-        hover ? DARKBLUE : BLUE
+        hover ? UI_PRIMARY_DARK : UI_PRIMARY
     );
 
     DrawText(
@@ -48,6 +49,7 @@ void flow_start(SessionFlow* f, const Session* plan) {
 
     f->rec.session_num = getNextSessionNum();
     f->save_ok = 0;
+    f->total_points = 0;
 
     f->state = FLOW_STUDY;
     f->last_tick = GetTime();
@@ -80,11 +82,15 @@ void flow_update(SessionFlow* f) {
         }
 
         // 공부 종료
-        if (quit) {
-            f->rec.goal_achieved =
-                f->rec.study_sec >= f->rec.goal_min * 60;
-
-            f->save_ok = saveSession(&f->rec);
+        if (quit) { 
+            f->rec.goal_achieved =        
+            f->rec.study_sec >= f->rec.goal_min * 60;    
+            f->save_ok = saveSession(&f->rec); 
+            // 포인트 계산 및 저장    
+            f->total_points = point(        
+                f->rec.study_sec,        
+                f->rec.distract_sec    
+            );    
             f->state = FLOW_RESULT;
         }
     }
@@ -129,8 +135,7 @@ void flow_draw(const SessionFlow* f) {
             earn(f->rec.study_sec),
             penalty(f->rec.distract_sec),
             0,
-            earn(f->rec.study_sec) -
-            penalty(f->rec.distract_sec)
+            f->total_points
         );
 
         if (!f->save_ok)
