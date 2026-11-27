@@ -1,6 +1,9 @@
 
 #include "raylib.h"
 #include "ui_color.h"
+#include "gui.h"
+#include "flow.h"
+#include "keyword.h"
 
 static Font font;
 static Texture2D uwang;
@@ -99,38 +102,26 @@ static void draw_uwang(void) {
 // 폰트 초기화
 static void load_font(void) {
 
-    int count;
-
-    int* chars = LoadCodepoints(
-        "공부 시작 학습 기록 키워드 설정 "
-        "메인으로 준비 중 "
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz"
-        "0123456789 :!?./-",
-        &count
-    );
-
-    // 중복 문자 제거
+    int chars[12000];
     int n = 0;
 
-    for (int i = 0; i < count; i++) {
+    // 영문, 숫자, 특수문자
+    for (int i = 32; i <= 126; i++)
+        chars[n++] = i;
 
-        int j = 0;
+    // 한글 자모
+    for (int i = 0x3131; i <= 0x318E; i++)
+        chars[n++] = i;
 
-        while (j < n && chars[j] != chars[i])
-            j++;
-
-        if (j == n)
-            chars[n++] = chars[i];
-    }
+    // 한글 완성형
+    for (int i = 0xAC00; i <= 0xD7A3; i++)
+        chars[n++] = i;
 
     font = LoadFontEx(
         UI_FONT_PATH,
-        UI_FONT_RESOLUTION,
+        32,
         chars, n
     );
-
-    UnloadCodepoints(chars);
 
     SetTextureFilter(
         font.texture,
@@ -149,11 +140,17 @@ int main(void) {
         "0:Tracker"
     );
 
+    Image icon = LoadImage("assets/icon2.png");
+    SetWindowIcon(icon);
+    UnloadImage(icon);
+
     SetTargetFPS(60);
     SetExitKey(KEY_NULL);
 
     // 폰트 불러오기
     load_font();
+    gui_init(font);
+    load_keywords();
 
     // 우왕이 사진 불러오기
     uwang = LoadTexture("assets/uwang.png");
@@ -167,6 +164,10 @@ int main(void) {
 
     int screen = 0;
     int running = 1;
+
+    SetupState setup = {0};
+    Session plan = {0};
+    SessionFlow flow = {0};
 
     // 메인 반복문
     while (!WindowShouldClose() && running) {
@@ -192,6 +193,9 @@ int main(void) {
                     menus[i]
                 )) {
                     screen = i + 1;
+
+                    if (screen == 1)    
+                        setup_init(&setup);
                 }
             }
 
@@ -212,26 +216,57 @@ int main(void) {
         }
 
         // 각 메뉴의 임시 화면
-        else {
+        // 학습 계획 입력 화면
+else if (screen == 1) {
 
-            header(menus[screen - 1]);
+    setup_draw(&setup);
 
-            center_text(
-                "준비 중",
-                220,
-                UI_FONT_SUBTITLE,
-                UI_MUTED
-            );
+    int result = setup_update(&setup, &plan);
 
-            // 메인 메뉴 복귀
-            if (button(
-                (Rectangle){36, 397, 728, 52},
-                "메인으로"
-            ) || IsKeyPressed(KEY_ESCAPE)) {
+    if (result == 1) {
+        flow_start(&flow, &plan);
+        screen = 5;
+    }
 
-                screen = 0;
-            }
-        }
+    else if (result == -1) {
+        screen = 0;
+    }
+}
+
+// 학습 진행 및 결과 화면
+else if (screen == 5) {
+
+    flow_update(&flow);
+
+    if (flow.state == FLOW_DONE) {
+        screen = 0;
+    }
+
+    else {
+        flow_draw(&flow);
+    }
+}
+
+// 나머지 메뉴 임시 화면
+else {
+
+    header(menus[screen - 1]);
+
+    center_text(
+        "준비 중",
+        220,
+        UI_FONT_SUBTITLE,
+        UI_MUTED
+    );
+
+    if (button(
+        (Rectangle){36, 397, 728, 52},
+        "메인으로"
+    ) || IsKeyPressed(KEY_ESCAPE)) {
+
+        screen = 0;
+    }
+}
 
         EndDrawing();
     }
