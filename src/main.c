@@ -129,6 +129,184 @@ static void load_font(void) {
     );
 }
 
+static int draw_main_menu(Font font, Texture2D uwang) {
+
+    // 왼쪽 캐릭터 배경
+    DrawRectangleRounded(
+        (Rectangle){26, 26, 345, 428},
+        0.14f, 20, UI_HOVER
+    );
+
+    // 0:Tracker 제목
+    Vector2 t = MeasureTextEx(font, "0:Tracker", 52, 1);
+
+    DrawTextEx(
+        font, "0:Tracker",
+        (Vector2){198.5f - t.x / 2, 48},
+        52, 1, UI_PRIMARY
+    );
+
+    // 우왕이 이미지
+    if (uwang.id != 0) {
+
+        float sx = 310.0f / uwang.width;
+        float sy = 310.0f / uwang.height;
+
+        float scale = sx < sy ? sx : sy;
+
+        float w = uwang.width * scale;
+        float h = uwang.height * scale;
+
+        DrawTextureEx(
+            uwang,
+            (Vector2){
+                180 - w / 2,
+                280 - h / 2
+            },
+            0, scale, WHITE
+        );
+    }
+
+    // 메뉴 버튼 영역
+    Rectangle rects[] = {
+        {395, 44, 379, 100},
+        {395, 160, 379, 62},
+        {395, 235, 379, 62},
+        {395, 310, 379, 62},
+        {395, 395, 379, 50}
+    };
+
+    const char* labels[] = {
+        "공부 시작",
+        "학습 기록",
+        "Level",
+        "키워드 설정",
+        "Exit"
+    };
+
+    int selected = 0;
+
+    for (int i = 0; i < 5; i++) {
+
+        Rectangle r = rects[i];
+
+        int hover = CheckCollisionPointRec(
+            GetMousePosition(), r
+        );
+
+        Color bg = i == 0
+            ? (hover ? UI_PRIMARY_DARK : UI_PRIMARY)
+            : (hover ? UI_HOVER : UI_SURFACE);
+
+        Color fg = i == 0 ? UI_WHITE : UI_TEXT;
+
+        // 버튼 배경
+        DrawRectangleRounded(r, 0.25f, 20, bg);
+
+        // 글자 크기
+        float size = i == 0 ? 38 : 30;
+
+        if (i == 4)
+            size = 25;
+
+        t = MeasureTextEx(font, labels[i], size, 1);
+
+        // 글자 위치
+        float x = i == 0 || i == 4
+            ? r.x + (r.width - t.x) / 2
+            : 470;
+
+        float y = r.y + (r.height - t.y) / 2;
+
+        DrawTextEx(
+            font, labels[i],
+            (Vector2){x, y},
+            size, 1, fg
+        );
+
+        // 공부 시작 아이콘
+        if (i == 0) {
+
+            DrawTriangle(
+                (Vector2){430, 77},
+                (Vector2){430, 111},
+                (Vector2){459, 94},
+                UI_WHITE
+            );
+        }
+
+        // 학습 기록 아이콘
+        else if (i == 1) {
+
+            DrawRectangleLinesEx(
+                (Rectangle){422, 178, 24, 27},
+                2.5f, UI_PRIMARY
+            );
+
+            DrawLine(428, 186, 440, 186, UI_PRIMARY);
+            DrawLine(428, 193, 440, 193, UI_PRIMARY);
+            DrawLine(428, 200, 437, 200, UI_PRIMARY);
+        }
+
+        // Level 아이콘
+        else if (i == 2) {
+
+            DrawPoly(
+                (Vector2){434, 266},
+                6, 17, 0, UI_PRIMARY
+            );
+
+            DrawLineEx(
+                (Vector2){427, 269},
+                (Vector2){434, 260},
+                3, WHITE
+            );
+
+            DrawLineEx(
+                (Vector2){434, 260},
+                (Vector2){441, 269},
+                3, WHITE
+            );
+        }
+
+        // 키워드 설정 아이콘
+        else if (i == 3) {
+
+            DrawPoly(
+                (Vector2){434, 341},
+                8, 15, 0, UI_PRIMARY
+            );
+
+            DrawCircle(434, 341, 8, bg);
+            DrawCircle(434, 341, 4, UI_PRIMARY);
+        }
+
+        // 오른쪽 화살표
+        if (i >= 1 && i <= 3) {
+
+            float cy = r.y + r.height / 2;
+
+            DrawLineEx(
+                (Vector2){738, cy - 7},
+                (Vector2){745, cy},
+                2.5f, UI_PRIMARY
+            );
+
+            DrawLineEx(
+                (Vector2){745, cy},
+                (Vector2){738, cy + 7},
+                2.5f, UI_PRIMARY
+            );
+        }
+
+        // 버튼 클릭 처리
+        if (hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+            selected = i + 1;
+    }
+
+    return selected;
+}
+
 // 메인 함수
 int main(void) {
 
@@ -176,102 +354,73 @@ int main(void) {
         ClearBackground(UI_BG);
 
         // 메인 메뉴
-        if (screen == 0) {
-
-            header("0:Tracker");
-
-            draw_uwang();
-
-            // 메뉴 버튼 4개
-            for (int i = 0; i < 4; i++) {
-
-                if (button(
-                    (Rectangle){
-                        36, 130 + i * 60,
-                        370, 54
-                    },
-                    menus[i]
-                )) {
-                    screen = i + 1;
-
-                    if (screen == 1)    
-                        setup_init(&setup);
-                }
-            }
-
-            // 구분선
-            DrawLine(
-                36, 380,
-                764, 380,
-                UI_BORDER
-            );
-
-            // 종료 버튼
-            if (button(
-                (Rectangle){36, 397, 728, 52},
-                menus[4]
-            )) {
-                running = 0;
+        if (screen == 0) {    
+            int selected = draw_main_menu(font, uwang);    
+            
+            if (selected == 5) {        
+                running = 0;    
+            }    
+            else if (selected > 0) {        
+                screen = selected;        
+                if (screen == 1)            
+                setup_init(&setup);    
             }
         }
 
         // 각 메뉴의 임시 화면
         // 학습 계획 입력 화면
-else if (screen == 1) {
+        else if (screen == 1) {    
+            setup_draw(&setup);    
+            int result = setup_update(&setup, &plan);    
+            
+            if (result == 1) {        
+                flow_start(&flow, &plan);        
+                screen = 5;    
+            }    
+            else if (result == -1) {        
+                screen = 0;    
+            }
+        }
+        // 학습 진행 및 결과 화면
+        else if (screen == 5) {
+    
+            flow_update(&flow);
+    
+            if (flow.state == FLOW_DONE) {       
+                screen = 0;    
+            }   
+            else {     
+                flow_draw(&flow);   
+            }
+        }
 
-    setup_draw(&setup);
 
-    int result = setup_update(&setup, &plan);
+        // 나머지 메뉴 임시 화면
 
-    if (result == 1) {
-        flow_start(&flow, &plan);
-        screen = 5;
+        else {
+  
+            header(menus[screen - 1]);
+   
+            center_text(        
+                "준비 중",      
+                220,       
+                UI_FONT_SUBTITLE,       
+                UI_MUTED  
+            );
+
+               if (button(      
+                (Rectangle){36, 397, 728, 52},       
+                "메인으로"               
+            ) || IsKeyPressed(KEY_ESCAPE)) {       
+                screen = 0;   
+            }
+        }      
+ 
+        EndDrawing();  
     }
 
-    else if (result == -1) {
-        screen = 0;
-    }
-}
-
-// 학습 진행 및 결과 화면
-else if (screen == 5) {
-
-    flow_update(&flow);
-
-    if (flow.state == FLOW_DONE) {
-        screen = 0;
-    }
-
-    else {
-        flow_draw(&flow);
-    }
-}
-
-// 나머지 메뉴 임시 화면
-else {
-
-    header(menus[screen - 1]);
-
-    center_text(
-        "준비 중",
-        220,
-        UI_FONT_SUBTITLE,
-        UI_MUTED
-    );
-
-    if (button(
-        (Rectangle){36, 397, 728, 52},
-        "메인으로"
-    ) || IsKeyPressed(KEY_ESCAPE)) {
-
-        screen = 0;
-    }
-}
-
-        EndDrawing();
-    }
-
-    // 이미지 메모리 해제
+    
+    // 이미지 메모리 해제   
     if (uwang.id != 0)
         UnloadTexture(uwang);
 
