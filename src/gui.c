@@ -935,6 +935,7 @@ void draw_study_screen(
 
 
 // 학습 결과 화면
+
 void draw_result_screen(
     const char* subject,
     int goal_min,
@@ -947,85 +948,441 @@ void draw_result_screen(
     int total_points
 ) {
     char buf[128];
+    Vector2 t;
 
     int elapsed = study_sec + distract_sec;
-    int net_points = earn - penalty + bonus;
+    int net = earn - penalty + bonus;
 
-    double focus_rate = 0;
+    float progress = goal_min > 0
+        ? (float)study_sec / (goal_min * 60) : 0.0f;
 
-    if (elapsed > 0)
-        focus_rate = study_sec * 100.0 / elapsed;
+    float focus = elapsed > 0
+        ? (float)study_sec / elapsed : 0.0f;
 
-    int achieved = study_sec >= goal_min * 60;
+    int achieved = progress >= 1.0f;
+    int percent = (int)(progress * 100);
 
-    // 상단 제목
-    header("학습 결과");
+    if (progress > 1.0f)
+        progress = 1.0f;
 
-    // 학습 제목 및 목표 달성 여부
-    text(subject, 36, 125, 26, UI_TEXT);
+    // 상단 아이콘
+    DrawCircle(400, 47, 27, UI_HOVER);
 
-    text(
-        achieved ? "목표 달성!" : "목표 미달성",
-        550, 125, 26,
-        achieved ? UI_FOCUS : UI_DISTRACT
+    if (achieved) {
+        DrawLineEx(
+            (Vector2){389, 47},
+            (Vector2){397, 55},
+            4.5f, UI_PRIMARY
+        );
+
+        DrawLineEx(
+            (Vector2){397, 55},
+            (Vector2){412, 39},
+            4.5f, UI_PRIMARY
+        );
+    }
+    else {    
+        DrawLineEx((Vector2){389, 47},               
+        (Vector2){397, 55}, 4.5f, UI_PRIMARY);    
+        
+        DrawLineEx((Vector2){397, 55},               
+        (Vector2){412, 39}, 4.5f, UI_PRIMARY);
+    }
+
+    // 상단 제목 및 과목명
+    center_text(
+        achieved ? "목표를 달성했어요!"
+                 : "오늘도 수고했어요!",
+        80, 42, UI_PRIMARY
     );
 
-    // 학습 결과 카드
-    card((Rectangle){36, 165, 354, 240});
+    center_text(subject, 128, 23, UI_MUTED);
 
-    text("STUDY REPORT", 52, 177, 24, UI_PRIMARY);
+    // 왼쪽 카드 배경
+    DrawRectangleRounded(
+        (Rectangle){36, 166, 354, 218},
+        0.22f, 20, UI_SURFACE
+    );
 
-    format_time(elapsed, buf, sizeof(buf));
-    text("총 경과 시간", 52, 215, 20, UI_MUTED);
-    text(buf, 245, 215, 20, UI_TEXT);
+    // 오른쪽 카드 배경
+    DrawRectangleRounded(
+        (Rectangle){406, 166, 358, 218},
+        0.22f, 20, UI_SURFACE
+    );
 
+    // ===== 왼쪽 카드 =====
+
+    // 순수 공부 시간 제목
+    t = MeasureTextEx(
+        gui_font, "순수 공부 시간",
+        23, UI_FONT_SPACING
+    );
+
+    text(
+        "순수 공부 시간",
+        213 - t.x / 2, 182,
+        23, UI_MUTED
+    );
+
+    // 순수 공부 시간 숫자
     format_time(study_sec, buf, sizeof(buf));
-    text("순수 공부 시간", 52, 250, 20, UI_MUTED);
-    text(buf, 245, 250, 20, UI_FOCUS);
 
-    format_time(distract_sec, buf, sizeof(buf));
-    text("학습 이탈 시간", 52, 285, 20, UI_MUTED);
-    text(buf, 245, 285, 20, UI_DISTRACT);
+    t = MeasureTextEx(
+        gui_font, buf, 65, UI_FONT_SPACING
+    );
 
-    snprintf(buf, sizeof(buf), "%d회", distract_count);
-    text("학습 이탈 횟수", 52, 320, 20, UI_MUTED);
-    text(buf, 245, 320, 20, UI_TEXT);
+    text(
+        buf, 213 - t.x / 2, 214,
+        65, UI_PRIMARY
+    );
 
-    snprintf(buf, sizeof(buf), "%.1f%%", focus_rate);
-    text("집중률", 52, 355, 20, UI_MUTED);
-    text(buf, 245, 355, 24, UI_FOCUS);
+    // 목표 달성률 막대 배경
+    DrawRectangleRounded(
+        (Rectangle){74, 287, 278, 12},
+        1.0f, 20, UI_HOVER
+    );
 
-    // 포인트 결과 카드
-    card((Rectangle){410, 165, 354, 240});
+    // 실제 목표 달성률
+    if (progress > 0.0f) {
+        DrawRectangleRounded(
+            (Rectangle){74, 287, 278 * progress, 12},
+            1.0f, 20, UI_PRIMARY
+        );
+    }
 
-    text("POINT REPORT", 426, 177, 24, UI_PRIMARY);
+    // 목표 시간 비교
+    snprintf(
+        buf, sizeof(buf),
+        "%d분 / %d분",
+        study_sec / 60, goal_min
+    );
 
-    snprintf(buf, sizeof(buf), "+%d P", earn);
-    text("획득 포인트", 426, 215, 20, UI_MUTED);
-    text(buf, 615, 215, 20, UI_FOCUS);
+    t = MeasureTextEx(
+        gui_font, buf, 21, UI_FONT_SPACING
+    );
 
-    snprintf(buf, sizeof(buf), "-%d P", penalty);
-    text("감점 포인트", 426, 250, 20, UI_MUTED);
-    text(buf, 615, 250, 20, UI_DISTRACT);
+    text(
+        buf, 213 - t.x / 2, 307,
+        21, UI_MUTED
+    );
 
-    snprintf(buf, sizeof(buf), "+%d P", bonus);
-    text("보너스 포인트", 426, 285, 20, UI_MUTED);
-    text(buf, 615, 285, 20, UI_WARNING);
+    // 목표 달성률 숫자
+    snprintf(
+        buf, sizeof(buf),
+        "목표 달성률 %d%%", percent
+    );
 
-    DrawLine(426, 315, 748, 315, UI_BORDER);
+    t = MeasureTextEx(
+        gui_font, buf, 23, UI_FONT_SPACING
+    );
 
-    snprintf(buf, sizeof(buf), "%+d P", net_points);
-    text("총 획득 포인트", 426, 325, 20, UI_TEXT);
-    text(buf, 615, 325, 24, UI_PRIMARY);
+    text(
+        buf, 213 - t.x / 2, 339,
+        23, UI_PRIMARY
+    );
+
+    // ===== 오른쪽 카드 =====
+
+    // 원형 집중률 그래프
+    Vector2 ringCenter = {503, 269};
+
+    DrawRing(
+        ringCenter,
+        57.5f, 68.5f,
+        -90, 270,
+        120, UI_HOVER
+    );
+
+    if (focus > 0.0f) {
+        DrawRing(
+            ringCenter,
+            57.5f, 68.5f,
+            -90, -90 + 360 * focus,
+            120, UI_PRIMARY
+        );
+    }
+
+    // 집중률 숫자
+    snprintf(
+        buf, sizeof(buf),
+        "%.0f%%", focus * 100
+    );
+
+    t = MeasureTextEx(
+        gui_font, buf, 46, UI_FONT_SPACING
+    );
+
+    text(
+        buf, 503 - t.x / 2, 233,
+        46, UI_PRIMARY
+    );
+
+    // 집중률 제목
+    t = MeasureTextEx(
+        gui_font, "집중률",
+        20, UI_FONT_SPACING
+    );
+
+    text(
+        "집중률", 503 - t.x / 2, 280,
+        20, UI_MUTED
+    );
+
+    // 가운데 구분선
+    DrawLine(585, 196, 585, 351, UI_BORDER);
+
+    // 획득 포인트 제목
+    t = MeasureTextEx(
+        gui_font, "획득 포인트",
+        21, UI_FONT_SPACING
+    );
+
+    text(
+        "획득 포인트",
+        674 - t.x / 2, 207,
+        21, UI_MUTED
+    );
+
+    // 획득 포인트 숫자
+    snprintf(buf, sizeof(buf), "%+d", net);
+
+    t = MeasureTextEx(
+        gui_font, buf, 44, UI_FONT_SPACING
+    );
+
+    text(
+        buf, 674 - t.x / 2, 237,
+        44, UI_PRIMARY
+    );
+
+    // POINTS
+    t = MeasureTextEx(
+        gui_font, "POINTS",
+        22, UI_FONT_SPACING
+    );
+
+    text(
+        "POINTS", 674 - t.x / 2, 282,
+        22, UI_PRIMARY
+    );
+
+    // 누적 포인트
+    if (total_points >= 0)
+        snprintf(
+            buf, sizeof(buf),
+            "누적 %d P", total_points
+        );
+    else
+        snprintf(
+            buf, sizeof(buf),
+            "포인트 저장 실패"
+        );
+
+    t = MeasureTextEx(
+        gui_font, buf, 19, UI_FONT_SPACING
+    );
+
+    text(
+        buf, 674 - t.x / 2, 327,
+        19, UI_MUTED
+    );
+
+    // ===== 하단 버튼 =====
+
+    // 상세 보기 버튼
+    DrawRectangleRounded(
+        (Rectangle){36, 420, 354, 52},
+        0.25f, 20, UI_SURFACE
+    );
+
+    t = MeasureTextEx(
+        gui_font, "상세 보기",
+        27, UI_FONT_SPACING
+    );
+
+    text(
+        "상세 보기",
+        213 - t.x / 2,
+        446 - t.y / 2,
+        27, UI_TEXT
+    );
+
+    // 메인으로 버튼
+    DrawRectangleRounded(
+        (Rectangle){410, 420, 354, 52},
+        0.25f, 20, UI_PRIMARY
+    );
+
+    t = MeasureTextEx(
+        gui_font, "메인으로",
+        27, UI_FONT_SPACING
+    );
+
+    text(
+        "메인으로",
+        587 - t.x / 2,
+        446 - t.y / 2,
+        27, UI_WHITE
+    );
+
+    (void)distract_count;
+}
+
+
+void draw_detail_screen(
+    const char* subject,
+    int goal_min,
+    int study_sec,
+    int distract_sec,
+    int distract_count,
+    int earn,
+    int penalty,
+    int bonus,
+    int total_points
+) {
+    char buf[128];
+    Vector2 t;
+
+    int elapsed = study_sec + distract_sec;
+    int net = earn - penalty + bonus;
+
+    float focus = elapsed > 0
+        ? (float)study_sec / elapsed * 100 : 0.0f;
+
+    // 상단 제목
+    center_text("상세 학습 기록", 25, 40, UI_PRIMARY);
+    center_text(subject, 75, 23, UI_MUTED);
+
+    // 카드 배경
+    DrawRectangleRounded(
+        (Rectangle){36, 110, 354, 284},
+        0.18f, 20, UI_SURFACE
+    );
+
+    DrawRectangleRounded(
+        (Rectangle){406, 110, 358, 284},
+        0.18f, 20, UI_SURFACE
+    );
+
+    // 카드 제목
+    text("시간 분석", 60, 127, 27, UI_PRIMARY);
+    text("포인트 정산", 430, 127, 27, UI_PRIMARY);
+
+    DrawLine(60, 165, 366, 165, UI_BORDER);
+    DrawLine(430, 165, 740, 165, UI_BORDER);
+
+    // 시간 분석
+    const char* timeLabels[] = {
+        "목표 시간",
+        "총 경과 시간",
+        "순수 공부 시간",
+        "학습 이탈 시간",
+        "학습 이탈 횟수",
+        "집중률"
+    };
+
+    for (int i = 0; i < 6; i++) {
+        int y = 178 + i * 34;
+
+        text(timeLabels[i], 60, y, 22, UI_MUTED);
+
+        switch (i) {
+            case 0:
+                format_time(goal_min * 60, buf, sizeof(buf));
+                break;
+            case 1:
+                format_time(elapsed, buf, sizeof(buf));
+                break;
+            case 2:
+                format_time(study_sec, buf, sizeof(buf));
+                break;
+            case 3:
+                format_time(distract_sec, buf, sizeof(buf));
+                break;
+            case 4:
+                snprintf(buf, sizeof(buf), "%d회", distract_count);
+                break;
+            case 5:
+                snprintf(buf, sizeof(buf), "%.1f%%", focus);
+                break;
+        }
+
+        t = MeasureTextEx(gui_font, buf, 23, UI_FONT_SPACING);
+        text(buf, 366 - t.x, y, 23, UI_TEXT);
+    }
+
+    // 포인트 정산
+    const char* pointLabels[] = {
+        "학습 포인트",
+        "이탈 차감",
+        "보너스"
+    };
+
+    int points[] = {earn, -penalty, bonus};
+
+    for (int i = 0; i < 3; i++) {
+        int y = 178 + i * 38;
+
+        text(pointLabels[i], 430, y, 22, UI_MUTED);
+
+        snprintf(buf, sizeof(buf), "%+d P", points[i]);
+
+        t = MeasureTextEx(gui_font, buf, 24, UI_FONT_SPACING);
+
+        text(buf, 740 - t.x, y, 24,
+             i == 1 ? UI_DISTRACT : UI_TEXT);
+    }
+
+    DrawLine(430, 290, 740, 290, UI_BORDER);
+
+    // 최종 획득 포인트
+    text("최종 획득 포인트", 430, 305, 22, UI_PRIMARY);
+
+    snprintf(buf, sizeof(buf), "%+d P", net);
+
+    t = MeasureTextEx(gui_font, buf, 28, UI_FONT_SPACING);
+    text(buf, 740 - t.x, 302, 28, UI_PRIMARY);
+
+    // 누적 포인트
+    text("누적 포인트", 430, 350, 22, UI_MUTED);
 
     if (total_points >= 0)
         snprintf(buf, sizeof(buf), "%d P", total_points);
     else
         snprintf(buf, sizeof(buf), "저장 실패");
 
-    text("누적 포인트", 426, 365, 20, UI_MUTED);
-    text(buf, 615, 365, 20, UI_TEXT);
+    t = MeasureTextEx(gui_font, buf, 24, UI_FONT_SPACING);
+    text(buf, 740 - t.x, 350, 24, UI_TEXT);
+
+    // 결과 요약 버튼
+    DrawRectangleRounded(
+        (Rectangle){36, 420, 354, 52},
+        0.25f, 20, UI_SURFACE
+    );
+
+    t = MeasureTextEx(
+        gui_font, "결과 요약", 27, UI_FONT_SPACING
+    );
+
+    text("결과 요약",
+         213 - t.x / 2, 446 - t.y / 2,
+         27, UI_TEXT);
+
+    // 메인으로 버튼
+    DrawRectangleRounded(
+        (Rectangle){410, 420, 354, 52},
+        0.25f, 20, UI_PRIMARY
+    );
+
+    t = MeasureTextEx(
+        gui_font, "메인으로", 27, UI_FONT_SPACING
+    );
+
+    text("메인으로",
+         587 - t.x / 2, 446 - t.y / 2,
+         27, UI_WHITE);
 }
+
 
 // 학습 이탈 화면
 void draw_warning_screen(int keyword_index) {

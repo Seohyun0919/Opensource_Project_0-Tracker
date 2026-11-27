@@ -6,7 +6,8 @@
 #include "ui_color.h"
 
 static const Rectangle stopRect = {36, 418, 728, 49};
-static const Rectangle backRect = {550, 420, 220, 40};
+static const Rectangle backRect = {410, 420, 354, 52};
+static const Rectangle detailRect = {36, 420, 354, 52};
 
 // 버튼 클릭 확인
 static int clicked(Rectangle rect) {
@@ -49,6 +50,7 @@ void flow_start(SessionFlow* f, const Session* plan) {
 
     f->rec.session_num = getNextSessionNum();
     f->save_ok = 0;
+    f->show_detail = 0;
     f->total_points = 0;
 
     f->state = FLOW_STUDY;
@@ -94,10 +96,12 @@ void flow_update(SessionFlow* f) {
             f->state = FLOW_RESULT;
         }
     }
-
-    else if (f->state == FLOW_RESULT) {
-        if (IsKeyPressed(KEY_ENTER) || clicked(backRect)) {
-            f->state = FLOW_DONE;
+    else if (f->state == FLOW_RESULT) {    
+        if (clicked(detailRect)) {        
+            f->show_detail = !f->show_detail;    
+        }    
+        if (clicked(backRect) || IsKeyPressed(KEY_ENTER)) {        
+            f->state = FLOW_DONE;    
         }
     }
 }
@@ -110,7 +114,6 @@ void flow_draw(const SessionFlow* f) {
         if (f->distracting) {
             draw_warning_screen(f->warn_keyword);
         }
-
         else {
             draw_study_screen(
                 f->rec.subject,
@@ -126,21 +129,37 @@ void flow_draw(const SessionFlow* f) {
 
     else if (f->state == FLOW_RESULT) {
 
-        draw_result_screen(
-            f->rec.subject,
-            f->rec.goal_min,
-            f->rec.study_sec,
-            f->rec.distract_sec,
-            f->rec.distract_count,
-            earn(f->rec.study_sec),
-            penalty(f->rec.distract_sec),
-            0,
-            f->total_points
-        );
+        // 상세 기록 화면
+        if (f->show_detail) {
+            draw_detail_screen(
+                f->rec.subject,
+                f->rec.goal_min,
+                f->rec.study_sec,
+                f->rec.distract_sec,
+                f->rec.distract_count,
+                earn(f->rec.study_sec),
+                penalty(f->rec.distract_sec),
+                0,
+                f->total_points
+            );
+        }
+
+        // 결과 요약 화면
+        else {
+            draw_result_screen(
+                f->rec.subject,
+                f->rec.goal_min,
+                f->rec.study_sec,
+                f->rec.distract_sec,
+                f->rec.distract_count,
+                earn(f->rec.study_sec),
+                penalty(f->rec.distract_sec),
+                0,
+                f->total_points
+            );
+        }
 
         if (!f->save_ok)
             draw_save_error();
-
-        draw_button(backRect, "Back to Menu");
     }
 }
