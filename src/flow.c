@@ -5,7 +5,7 @@
 #include "gui.h"
 #include "ui_color.h"
 
-static const Rectangle stopRect = {550, 420, 220, 40};
+static const Rectangle stopRect = {36, 418, 728, 49};
 static const Rectangle backRect = {550, 420, 220, 40};
 
 // 버튼 클릭 확인

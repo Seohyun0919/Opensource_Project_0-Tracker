@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 #include "gui.h"
 #include "ui_color.h"
@@ -798,6 +799,7 @@ void setup_draw(const SetupState* s) {
 }
 
 // 학습 진행 화면
+
 void draw_study_screen(
     const char* subject,
     int goal_min,
@@ -808,67 +810,128 @@ void draw_study_screen(
     char buf[128];
     int elapsed = study_sec + distract_sec;
 
-    float progress = 0;
+    float progress = 0.0f;
 
     if (goal_min > 0)
         progress = (float)study_sec / (goal_min * 60);
 
-    if (progress > 1)
-        progress = 1;
+    if (progress > 1.0f)
+        progress = 1.0f;
 
-    // 상단 제목
-    header("학습 진행");
+    // 과목명
+    text(subject, 36, 22, 26, UI_TEXT);
 
-    // 학습 과목
-    center_text(subject, 125,
-                UI_FONT_SUBTITLE, UI_TEXT);
-
-    // 순수 공부 시간
-    center_text("순수 공부 시간", 175,
-                UI_FONT_SMALL, UI_MUTED);
-
-    format_time(study_sec, buf, sizeof(buf));
-
-    center_text(buf, 205,
-                UI_FONT_TIMER, UI_PRIMARY);
-
-    // 목표 시간 및 달성률
-    snprintf(buf, sizeof(buf),
-             "목표 %d분 / 달성률 %.0f%%",
-             goal_min, progress * 100);
-
-    center_text(buf, 290,
-                UI_FONT_SMALL, UI_TEXT);
-
-    // 진행률 막대
-    progress_bar(
-        (Rectangle){36, 325, 728, 12},
-        progress
+    // 학습 진행 상태
+    DrawRectangleRounded(
+        (Rectangle){612, 23, 152, 32},
+        1.0f, 20,
+        (Color){228, 239, 232, 255}
     );
 
-    // 정보 카드
-    card((Rectangle){36, 350, 232, 65});
-    card((Rectangle){284, 350, 232, 65});
-    card((Rectangle){532, 350, 232, 65});
+    DrawCircle(629, 39, 4.5f, UI_FOCUS);
+    text("학습 진행 중", 653, 29, 17, UI_FOCUS);
 
-    // 총 경과 시간
-    text("총 경과 시간", 50, 355, 18, UI_MUTED);
+    // 원형 진행률 그래프
+    Vector2 center = {400, 212};
 
-    format_time(elapsed, buf, sizeof(buf));
-    text(buf, 50, 377, 26, UI_TEXT);
+    float innerRadius = 158.5f;
+    float outerRadius = 181.5f;
 
-    // 학습 이탈 시간
-    text("학습 이탈 시간", 298, 355, 18, UI_MUTED);
+    float startAngle = 135.0f;
+    float endAngle = 405.0f;
 
-    format_time(distract_sec, buf, sizeof(buf));
-    text(buf, 298, 377, 26, UI_DISTRACT);
+    Color trackColor = {234, 220, 226, 255};
 
-    // 학습 이탈 횟수
-    text("학습 이탈 횟수", 546, 355, 18, UI_MUTED);
+    // 전체 진행률 배경
+    DrawRing(
+        center,
+        innerRadius, outerRadius,
+        startAngle, endAngle,
+        120, trackColor
+    );
 
-    snprintf(buf, sizeof(buf), "%d회", distract_count);
-    text(buf, 546, 377, 26, UI_TEXT);
+    // 배경 그래프 끝부분 둥글게 처리
+    DrawCircle(280, 332, 11.5f, trackColor);
+    DrawCircle(520, 332, 11.5f, trackColor);
+
+    // 실제 공부 진행률
+    if (progress > 0.0f) {
+        float angle = startAngle + 270.0f * progress;
+
+        DrawRing(
+            center,
+            innerRadius, outerRadius,
+            startAngle, angle,
+            120, UI_PRIMARY
+        );
+
+        DrawCircle(280, 332, 11.5f, UI_PRIMARY);
+
+        float rad = angle * DEG2RAD;
+
+        DrawCircleV(
+            (Vector2){
+                center.x + 170.0f * cosf(rad),
+                center.y + 170.0f * sinf(rad)
+            },
+            11.5f,
+            UI_PRIMARY
+        );
+    }
+
+    // 순수 공부 시간
+    center_text("FOCUS TIME", 136, 19, UI_MUTED);
+
+    format_time(study_sec, buf, sizeof(buf));
+    center_text(buf, 172, 62, UI_PRIMARY);
+
+    // 목표 공부 시간
+    snprintf(buf, sizeof(buf), "목표 %d분", goal_min);
+    center_text(buf, 260, 20, UI_MUTED);
+
+    // 하단 정보
+    const char* labels[] = {
+        "총 경과 시간",
+        "이탈 시간",
+        "이탈 횟수"
+    };
+
+    float centers[] = {160, 400, 640};
+
+    for (int i = 0; i < 3; i++) {
+        Vector2 t = MeasureTextEx(
+            gui_font, labels[i], 17, UI_FONT_SPACING
+        );
+
+        text(
+            labels[i],
+            centers[i] - t.x / 2,
+            350, 17, UI_MUTED
+        );
+
+        if (i == 0)
+            format_time(elapsed, buf, sizeof(buf));
+        else if (i == 1)
+            format_time(distract_sec, buf, sizeof(buf));
+        else
+            snprintf(buf, sizeof(buf), "%d회", distract_count);
+
+        t = MeasureTextEx(
+            gui_font, buf, 26, UI_FONT_SPACING
+        );
+
+        text(
+            buf,
+            centers[i] - t.x / 2,
+            376, 26, UI_TEXT
+        );
+    }
+
+    // 정보 사이 구분선
+    DrawLine(280, 354, 280, 401, UI_BORDER);
+    DrawLine(520, 354, 520, 401, UI_BORDER);
 }
+
 
 
 // 학습 결과 화면
