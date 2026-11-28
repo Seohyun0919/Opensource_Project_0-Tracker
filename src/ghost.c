@@ -196,69 +196,88 @@ GhostResult finish_ghost(const Session* today)
 }
 
 #ifdef GHOST_TEST
+#include <windows.h> // SetConsoleOutputCP를 사용하기 위해서 
 int main(void)
 {
-    Session best;
-    int timeline[GHOST_MAX_MIN];
-    int best_min;
-    Session today = {0};
-    GhostResult result;
-    const char* text;
-    int t;
+    Session today = {0}; // 오늘 학습 기록 (0으로 시작함)
+    GhostResult result; // 학습이 끝난 후 결과 
+    const char* text; // 고스트모드가 돌려준 메시지 (돌려줄게 없다면 NULL)
+    int focus_min = 0; // 최고 기록에서 학습에 집중한 분 수
+    int t; // 학습 시작 후 몇 초 인지 
     int i;
-    
-    if (load_ghost("오픈소스", &best, timeline, &best_min) == 1)
-    {
-        printf("분:   ");
-        for (i = 0; i < best_min; i++)
-        {
-            printf("%d ", i + 1);
-        }
 
-        printf("\n상태:  ");
-        for(i = 0; i < best_min; i++)
+    SetConsoleOutputCP(CP_UTF8); // 한글이 꺠지지 않기 위해서 출력을 UTF-8로 함 
+
+    printf("==================== 고스트 모드 ====================\n");
+    
+    // 최고 기록을 부른 후 타임라인을 보여줌 
+    if (init_ghost("오픈소스") == 1)
+    {
+        printf("\n[최고 기록 타임라인] ■ 집중 □ 이탈 \n");
+        printf(" ");
+        for (i = 0; i < ghost_min; i++)
         {
-            printf("%d ", timeline[i]);
+            if (ghost_timeline[i] == 1)
+            {
+                printf("■");
+                focus_min++; // 학습에 집중한 분을 셈 
+            }
+            else
+            {
+                printf("□");
+            }
         }
-        printf(" (1= 집중, 0= 이탈)\n\n");
+        // 이탈한 분 수 = 전체 분 수 - 학습에 집중한 분 수 
+        printf("\n 집중: %d분 / 이탈 %d분\n", focus_min, ghost_min - focus_min);
     }
 
-    // 가짜로 5분 공부해봄
-    // 1분 30초 ~ 2분 30초 딴짓, 나머지는 집중
-    init_ghost("오픈소스");
+    // 가짜로 5분(300초) 학습함
+    // 1분 30초 ~ 2분 30초는 학습 이탈이고 남은 시간은 학습 
+    printf("\n[학습 중 메시지]\n");
     strcpy(today.subject, "오픈소스");
-    for(t=0; t < 300; t++)
+    for (t = 0; t < 300; t++)
     {
+        // 학습이탈 하는 동안에는 1초마다 이탈 시간을 1씩 늘림 
         if (t >= 90 && t < 150)
         {
             today.distract_sec++;
         }
 
+        // 현재의 나와 비교해서 띄울 메시지를 가져옴 (메시지 없다면 NULL)
         text = update_ghost(&today, t);
         if (text != NULL)
         {
-            printf("[%d분 %02d초] %s\n", t / 60, t % 60, text);
+            // 90초 -> 01:30처럼 분:초로 출력함 
+            printf(" %02d:%02d %s\n", t/60, t%60, text);
         }
     }
 
-    // 끝났을 때 결과
+    // 학습이 끝났을 때 결과
+    // 순수 학습 시간 = 전체 시간 - 학습 이탈 시간 
     today.study_sec = 300 - today.distract_sec;
     result = finish_ghost(&today);
-    printf("\n오늘 %d초 / 최고 기록 %d초\n", result.today_sec, result.best_sec);
+    printf("\n[결과]\n");
+    printf(" 오늘 학습 %2d분 %02d초\n", result.today_sec / 60, result.today_sec % 60);
+    printf(" 최고 기록 %2d분 %02d초\n", result.best_sec / 60, result.best_sec % 60);
+
+    // 오늘 기록이 더 길면 갱신하고, 같거나 짧으면 유지함
     if (result.is_new == 1)
     {
-        printf("최고 기록 갱신\n");
+        printf(" >> 최고 기록 갱신!!!!\n");
     }
-
     else 
     {
-        printf("최고 기록 유지\n");
+        printf(" >> 최고 기록 유지\n");
     }
 
-    // 기록 없는 과목도 init_ghost로 확인함 
-    printf("\n");
+    // 기록이 없는 과목은 "최고 기록 없습니다"가 나오는지 확인 
+    printf("\n[기록 없는 과목]\n");
     init_ghost("데이터구조");
 
+    printf("================================================\n");
+
+
+      
     return 0;
 }
 #endif
