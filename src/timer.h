@@ -20,9 +20,12 @@ typedef struct {
 } TimerState;
 
 void start_timer(TimerState* timer, double now);
-// 이탈 감지 연결 전까지 전체 경과 시간을 공부 시간으로 계산한다.
 void update_timer(const TimerState* timer, Session* rec, double now);
 
-void resume_timer(TimerState* timer, const Session* saved, double now); // 임시 파일에서 불러온 기록 위에 이어서 센다. saved의 학습·이탈 시간이 시작값이 됨
+// 마지막 저장 후 60초가 지났을 때만 임시 파일에 저장함
+void save_temp_if_due(TimerState* timer, const Session* rec, double now);
+
+// 임시 파일에서 불러온 기록 위에 이어서 센다. saved의 학습·이탈 시간이 시작값이 됨
+void resume_timer(TimerState* timer, const Session* saved, double now);
 
 #endif

@@ -4,7 +4,7 @@
 #include <windows.h>
 #include "study_ui.h"
 #include "timer.h"
-
+#include <string.h>
 
 static void draw_study(const char* subject, int goal_min,
                int study_sec, int distract_sec,
@@ -115,6 +115,30 @@ void study_ui(Session* rec, int resume)
             last_sec = elapsed;
         }
         Sleep(100);
-        removeTempSession();// Q로 정상 종료했으므로 복구할 필요가 없음
     }
+    removeTempSession();    // Q로 정상 종료했으므로 복구할 필요가 없음
+}
+
+int recover_ui(Session* rec)
+{
+    char line[16];
+
+    if (!loadTempSession(rec)) return 0;
+
+    system("cls");
+    printf("비정상 종료된 학습 기록이 있습니다.\n\n");
+    printf("과목 : %s\n", rec->subject);
+    printf("학습 : %d분 %d초 / 이탈 : %d회\n\n", rec->study_sec / 60,
+           rec->study_sec % 60, rec->distract_count);
+    printf("이어서 학습할까요? (y/n) : ");
+    fflush(stdout);
+
+    // 입력이 끊기면 판단할 수 없으니 임시 파일은 그대로 두고 새로 시작함
+    if (fgets(line, sizeof(line), stdin)) {
+        if (line[0] == 'y' || line[0] == 'Y') return 1;
+        removeTempSession();
+    }
+    // 불러온 값이 새 학습에 섞이지 않게 비움
+    memset(rec, 0, sizeof(*rec));
+    return 0;
 }

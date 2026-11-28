@@ -48,14 +48,16 @@ int main() {
 
        if (menu == 1) {
             Session rec = {0};
-
-            system("cls");
-            input_plan(&rec);
-            if (feof(stdin) || ferror(stdin)) {
-                break;
+            int resume = recover_ui(&rec);
+            if (!resume) {
+                system("cls");
+                input_plan(&rec);
+                if (feof(stdin) || ferror(stdin)) {
+                    break;
+                }
             }
 
-            study_ui(&rec, 0);
+            study_ui(&rec, resume);
 
             result_ui(rec.subject, rec.goal_min,
                       rec.study_sec, rec.distract_sec, rec.distract_count,
