@@ -132,3 +132,31 @@ void analyzeSession(int session_num, AnalysisResult* result)
     }
     analyzeWindowLogs(session_num, result);
 }
+
+// 그 과목의 모든 세션을 더함. 기록이 없으면 0
+int getSubjectStudySec(const char* subject)
+{
+    Session* list;
+    int count;
+    int found;
+    int i;
+    int total = 0;
+
+    count = findSessionsBySubject(subject, NULL, 0);
+    if (count == 0) {
+        return 0;
+    }
+    list = malloc(count * sizeof(Session));
+    if (list == NULL) {
+        return 0;
+    }
+    found = findSessionsBySubject(subject, list, count);
+    if (found < count) {
+        count = found;
+    }
+    for (i = 0; i < count; i++) {
+        total += list[i].study_sec;
+    }
+    free(list);
+    return total;
+}
