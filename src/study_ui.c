@@ -111,5 +111,6 @@ void study_ui(Session* rec)
             last_sec = elapsed;
         }
         Sleep(100);
+        removeTempSession();// Q로 정상 종료했으므로 복구할 필요가 없음
     }
 }

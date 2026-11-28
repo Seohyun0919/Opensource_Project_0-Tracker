@@ -31,13 +31,14 @@ void flow_update(SessionFlow* f)
             f->last_tick = now;
             update_timer(&f->timer, &f->rec, now);
             save_temp_if_due(&f->timer, &f->rec, now);
-            
+
             f->distracting = (f->rec.distract_sec > f->prev_distract_sec);
             f->prev_distract_sec = f->rec.distract_sec;
             f->warn_keyword = f->distracting ? detect_current_window() : -1;
         }
         if (quit) {
             f->save_ok = saveSession(&f->rec);
+            if (f->save_ok) removeTempSession(); // 저장에 실패하면 임시 파일이 마지막 남은 기록이라 지우지 않음
             f->state = FLOW_RESULT;
         }
     }
