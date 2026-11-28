@@ -180,22 +180,37 @@ void start_timer(TimerState* timer, double now)
 {
     timer->start_time = now;
     timer->last_temp_save = now;
+    timer->base_study_sec = 0;
+    timer->base_distract_sec = 0;
     init_detect();
 }
 
 void update_timer(const TimerState* timer, Session* rec, double now)
 {
+    // 이어하기 이후에 지난 시간만. 이전 기록은 base_*로 더함
     int elapsed = (int)(now - timer->start_time);
+    Session seg = *rec;
 
-    update_detect(rec, elapsed);
-    rec->study_sec = elapsed - rec->distract_sec;
+    // update_detect는 distract_sec을 이번 구간 값으로만 덮어씀. 합계에서 base를 빼서 넘김
+    seg.distract_sec = rec->distract_sec - timer->base_distract_sec;
+    update_detect(&seg, elapsed);
+
+    rec->distract_count = seg.distract_count;
+    rec->distract_sec = timer->base_distract_sec + seg.distract_sec;
+    rec->study_sec = timer->base_study_sec + (elapsed - seg.distract_sec);
     rec->goal_achieved = (rec->study_sec >= rec->goal_min * 60);
 }
-
 void save_temp_if_due(TimerState* timer, const Session* rec, double now)
 {
     if (now - timer->last_temp_save < TEMP_SAVE_SEC) return;
     timer->last_temp_save = now;
     // 저장에 실패해도 학습은 멈추지 않음
     saveTempSession(rec);
+}
+
+void resume_timer(TimerState* timer, const Session* saved, double now)
+{
+    start_timer(timer, now);
+    timer->base_study_sec = saved->study_sec;
+    timer->base_distract_sec = saved->distract_sec;
 }
