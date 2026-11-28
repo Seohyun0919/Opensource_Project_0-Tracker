@@ -1423,5 +1423,1181 @@ void draw_save_error(void) {
          36, 430, 20, UI_DISTRACT);
 }
 
+// ===== 학습 기록 화면 =====
+
+static SetupState history_subjects;
+
+static Session* history_list = NULL;
+static int history_count = 0;
+
+static int history_page = 0;
+static int history_selected = -1;
+
+static int history_subject_scroll = 0;
+static int history_record_scroll = 0;
+
+// 학습 기록 메모리 해제
+void history_close(void) {
+    free(history_list);
+    history_list = NULL;
+    history_count = 0;
+}
+
+// 학습 기록 초기화
+void history_init(void) {
+
+    history_close();
+
+    // 등록된 과목 불러오기
+    setup_init(&history_subjects);
+
+    // 화면 상태 초기화
+    history_page = 0;
+    history_selected = -1;
+
+    history_subject_scroll = 0;
+    history_record_scroll = 0;
+
+    // 전체 학습 기록 개수 확인
+    int count = loadSessions(NULL, 0);
+
+    if (count <= 0)
+        return;
+
+    // 학습 기록 저장 공간 할당
+    history_list = malloc(sizeof(Session) * count);
+
+    if (history_list == NULL)
+        return;
+
+    // 학습 기록 불러오기
+    history_count = loadSessions(history_list, count);
+
+    if (history_count > count)
+        history_count = count;
+}
+
+// 과목별 학습 기록 개수 계산
+static int history_subject_count(const char* subject) {
+
+    int count = 0;
+
+    for (int i = 0; i < history_count; i++) {
+
+        if (strcmp(history_list[i].subject, subject) == 0)
+            count++;
+    }
+
+    return count;
+}
 
 
+// 과목 선택 화면 출력
+static void history_draw_subjects(void) {
+
+    char buf[128];
+
+    // 상단 뒤로 가기 화살표
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){65, 48}, 3, UI_PRIMARY);
+
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){51, 36}, 3, UI_PRIMARY);
+
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){51, 60}, 3, UI_PRIMARY);
+
+    // 상단 제목
+    center_text("학습 기록", 24, 44, UI_PRIMARY);
+    center_text("과목을 선택하세요", 85, 24, UI_MUTED);
+
+    // 등록된 과목이 없는 경우
+    if (history_subjects.subject_count == 0) {
+        center_text("등록된 과목이 없습니다.",
+                    220, 28, UI_MUTED);
+        return;
+    }
+
+    // 한 화면에 최대 4개의 과목 표시
+    for (int i = 0; i < 4; i++) {
+
+        int index = history_subject_scroll + i;
+
+        if (index >= history_subjects.subject_count)
+            break;
+
+        int y = 132 + i * 80;
+
+        Rectangle r = {36, y, 728, 64};
+
+        int hover = CheckCollisionPointRec(
+            GetMousePosition(), r
+        );
+
+        // 과목 카드 배경
+        DrawRectangleRounded(
+            r, 0.25f, 20,
+            hover ? UI_HOVER : UI_SURFACE
+        );
+
+        // 책 아이콘
+        DrawRectangleLinesEx(
+            (Rectangle){58, y + 18, 21, 28},
+            2.5f, UI_PRIMARY
+        );
+
+        DrawRectangleLinesEx(
+            (Rectangle){79, y + 18, 21, 28},
+            2.5f, UI_PRIMARY
+        );
+
+        DrawLine(64, y + 26, 74, y + 26, UI_PRIMARY);
+        DrawLine(64, y + 33, 74, y + 33, UI_PRIMARY);
+        DrawLine(84, y + 26, 94, y + 26, UI_PRIMARY);
+        DrawLine(84, y + 33, 94, y + 33, UI_PRIMARY);
+
+        // 과목명
+        text(
+            history_subjects.subjects[index],
+            128, y + 17, 28, UI_TEXT
+        );
+
+        // 과목별 기록 개수
+        int count = history_subject_count(
+            history_subjects.subjects[index]
+        );
+
+        snprintf(buf, sizeof(buf), "%d개의 기록", count);
+
+        Vector2 t = MeasureTextEx(
+            gui_font, buf, 22, UI_FONT_SPACING
+        );
+
+        text(buf, 702 - t.x, y + 20, 22, UI_MUTED);
+
+        // 오른쪽 화살표
+        DrawLineEx(
+            (Vector2){728, y + 23},
+            (Vector2){737, y + 32},
+            2.5f, UI_PRIMARY
+        );
+
+        DrawLineEx(
+            (Vector2){737, y + 32},
+            (Vector2){728, y + 41},
+            2.5f, UI_PRIMARY
+        );
+    }
+
+    // 스크롤바
+    if (history_subjects.subject_count > 4) {
+
+        float height =
+            304.0f * 4 / history_subjects.subject_count;
+
+        float position =
+            304.0f * history_subject_scroll
+            / history_subjects.subject_count;
+
+        DrawRectangleRounded(
+            (Rectangle){779, 132, 6, 304},
+            1.0f, 10, UI_BORDER
+        );
+
+        DrawRectangleRounded(
+            (Rectangle){779, 132 + position, 6, height},
+            1.0f, 10, UI_PRIMARY
+        );
+    }
+}
+
+static void history_calculate(void);
+static void history_draw_analysis(void);
+static void history_draw_records(void);
+static int history_compare(const void* a, const void* b);
+static void history_draw_performance(void);
+
+// 학습 기록 화면 입력 처리
+
+int history_update(void) {
+
+    Rectangle back = {24, 24, 55, 50};
+
+    // 뒤로 가기
+    if (clicked(back) || IsKeyPressed(KEY_ESCAPE)) {
+
+        if (history_page == 0)
+            return -1;
+
+        history_page--;
+        return 0;
+    }
+
+    // 과목 선택 화면
+    if (history_page == 0) {
+
+        float wheel = GetMouseWheelMove();
+
+        if (wheel > 0)
+            history_subject_scroll--;
+        else if (wheel < 0)
+            history_subject_scroll++;
+
+        int max_scroll =
+            history_subjects.subject_count - 4;
+
+        if (max_scroll < 0)
+            max_scroll = 0;
+
+        if (history_subject_scroll < 0)
+            history_subject_scroll = 0;
+
+        if (history_subject_scroll > max_scroll)
+            history_subject_scroll = max_scroll;
+
+        // 과목 선택
+        for (int i = 0; i < 4; i++) {
+
+            int index = history_subject_scroll + i;
+
+            if (index >= history_subjects.subject_count)
+                break;
+
+            Rectangle r = {
+                36, 132 + i * 80, 728, 64
+            };
+
+            if (clicked(r)) {
+
+                history_selected = index;
+                history_record_scroll = 0;
+
+                history_calculate();
+
+                history_page = 1;
+                break;
+            }
+        }
+    }
+
+    // 과목별 학습 분석 화면
+    else if (history_page == 1) {
+
+        Rectangle detail = {36, 415, 728, 49};
+
+        if (clicked(detail)) {
+
+            // 날짜 오름차순 정렬
+            if (history_count > 1) {
+
+                qsort(
+                    history_list,
+                    history_count,
+                    sizeof(Session),
+                    history_compare
+                );
+            }
+
+            history_record_scroll = 0;
+            history_page = 2;
+        }
+    }
+
+    // 상세 학습 기록 화면
+    else if (history_page == 2) {
+
+        float wheel = GetMouseWheelMove();
+
+        if (wheel > 0)
+            history_record_scroll--;
+        else if (wheel < 0)
+            history_record_scroll++;
+
+        int max_scroll =
+            history_subject_count(
+                history_subjects.subjects[history_selected]
+            ) - 5;
+
+        if (max_scroll < 0)
+            max_scroll = 0;
+
+        if (history_record_scroll < 0)
+            history_record_scroll = 0;
+
+        if (history_record_scroll > max_scroll)
+            history_record_scroll = max_scroll;
+    }
+
+    return 0;
+}
+
+
+// 학습 기록 화면 출력
+void history_draw(void) {
+
+    if (history_page == 0) {
+        history_draw_subjects();
+    }
+
+    else if (history_page == 1) {
+        history_draw_analysis();
+    }
+
+    else if (history_page == 2) {
+        history_draw_records();
+    }
+}
+
+// 과목별 학습 통계
+typedef struct {
+    long long total_study;
+    long long total_distract;
+
+    int session_count;
+    int study_days;
+    int achieved_count;
+
+    double average_sec;
+    long long best_sec;
+
+    float focus_rate;
+    float achievement_rate;
+
+    long long recent_sec[7];
+    char recent_dates[7][11];
+
+} HistoryStats;
+
+static HistoryStats history_stats;
+
+// 특정 과목의 특정 날짜 공부 시간 합산
+static long long history_daily_total(
+    const char* subject,
+    const char* date
+) {
+    long long total = 0;
+
+    for (int i = 0; i < history_count; i++) {
+
+        if (strcmp(history_list[i].subject, subject) == 0 &&
+            strcmp(history_list[i].date, date) == 0) {
+
+            total += history_list[i].study_sec;
+        }
+    }
+
+    return total;
+}
+
+
+// 선택한 과목의 학습 통계 계산
+static void history_calculate(void) {
+
+    memset(&history_stats, 0, sizeof(history_stats));
+
+    if (history_selected < 0 ||
+        history_selected >= history_subjects.subject_count)
+        return;
+
+    const char* subject =
+        history_subjects.subjects[history_selected];
+
+    for (int i = 0; i < history_count; i++) {
+
+        Session* s = &history_list[i];
+
+        // 선택한 과목만 계산
+        if (strcmp(s->subject, subject) != 0)
+            continue;
+
+        // 전체 학습 시간 및 횟수
+        history_stats.total_study += s->study_sec;
+        history_stats.total_distract += s->distract_sec;
+        history_stats.session_count++;
+
+        // 목표 달성 횟수
+        if (s->goal_achieved)
+            history_stats.achieved_count++;
+
+        // 이미 계산한 날짜인지 확인
+        int duplicate = 0;
+
+        for (int j = 0; j < i; j++) {
+
+            if (strcmp(history_list[j].subject, subject) == 0 &&
+                strcmp(history_list[j].date, s->date) == 0) {
+
+                duplicate = 1;
+                break;
+            }
+        }
+
+        // 같은 날짜는 한 번만 계산
+        if (!duplicate) {
+
+            long long daily =
+                history_daily_total(subject, s->date);
+
+            // 실제 공부한 날짜만 집계
+            if (daily > 0)
+                history_stats.study_days++;
+
+            // 역대 최고 일일 공부 시간
+            if (daily > history_stats.best_sec)
+                history_stats.best_sec = daily;
+        }
+    }
+
+    // 일평균 공부 시간
+    if (history_stats.study_days > 0) {
+
+        history_stats.average_sec =
+            (double)history_stats.total_study
+            / history_stats.study_days;
+    }
+
+    // 전체 집중률
+    long long elapsed =
+        history_stats.total_study +
+        history_stats.total_distract;
+
+    if (elapsed > 0) {
+
+        history_stats.focus_rate =
+            100.0 * history_stats.total_study
+            / elapsed;
+    }
+
+    // 목표 달성률
+    if (history_stats.session_count > 0) {
+
+        history_stats.achievement_rate =
+            100.0 * history_stats.achieved_count
+            / history_stats.session_count;
+    }
+
+    // 최근 7일간 공부 시간
+    time_t now = time(NULL);
+    struct tm* local = localtime(&now);
+
+    if (local == NULL)
+        return;
+
+    struct tm today = *local;
+
+    for (int i = 0; i < 7; i++) {
+
+        struct tm day = today;
+
+        day.tm_mday -= (6 - i);
+        day.tm_isdst = -1;
+
+        if (mktime(&day) == (time_t)-1)
+            continue;
+
+        strftime(
+            history_stats.recent_dates[i],
+            sizeof(history_stats.recent_dates[i]),
+            "%Y-%m-%d",
+            &day
+        );
+
+        history_stats.recent_sec[i] =
+            history_daily_total(
+                subject,
+                history_stats.recent_dates[i]
+            );
+    }
+}
+
+// 수평 점선 출력
+static void history_dashed_line(
+    float x1, float x2, float y, Color color
+) {
+    for (float x = x1; x < x2; x += 10) {
+
+        float end = x + 6;
+
+        if (end > x2)
+            end = x2;
+
+        DrawLineEx(
+            (Vector2){x, y},
+            (Vector2){end, y},
+            1.8f, color
+        );
+    }
+}
+// Y축 눈금 간격 계산
+static double history_axis_step(double best_min) {
+
+    if (best_min <= 60)
+        return 15;
+
+    if (best_min <= 120)
+        return 30;
+
+    if (best_min <= 240)
+        return 60;
+
+    if (best_min <= 480)
+        return 120;
+
+    return ceil(best_min / 240.0) * 60;
+}
+
+// 최근 7일 공부 시간 그래프
+static void history_draw_chart(void) {
+
+    char buf[64];
+    Vector2 t;
+
+    Color bar_color = {201, 151, 170, 255};
+
+    // 그래프 카드
+    DrawRectangleRounded(
+        (Rectangle){36, 201, 452, 195},
+        0.15f, 20, UI_SURFACE
+    );
+
+    text("최근 7일 공부 시간",
+         55, 211, 23, UI_TEXT);
+
+    // 그래프 영역
+    float left = 93;
+    float right = 462;
+    float top = 258;
+    float bottom = 357;
+
+    float height = bottom - top;
+    float width = right - left;
+
+    // 전체 평균과 역대 최고 기록
+    double best = history_stats.best_sec / 60.0;
+    double average = history_stats.average_sec / 60.0;
+
+    // Y축 자동 조절
+    double step = history_axis_step(best);
+    double max_value = ceil(best / step) * step;
+
+    if (max_value < step * 2)
+        max_value = step * 2;
+
+    // Y축 눈금 및 가로선
+    for (double value = 0;
+         value <= max_value;
+         value += step) {
+
+        float y = bottom -
+            (float)(value / max_value) * height;
+
+        snprintf(buf, sizeof(buf), "%.0f", value);
+
+        t = MeasureTextEx(
+            gui_font, buf, 15, UI_FONT_SPACING
+        );
+
+        text(buf, left - 10 - t.x,
+             y - 8, 15, UI_MUTED);
+
+        DrawLineEx(
+            (Vector2){left, y},
+            (Vector2){right, y},
+            1, UI_BORDER
+        );
+    }
+
+    text("(단위:분)", 200, 220, 14, UI_MUTED);
+
+    // 최근 7일 막대그래프
+    float gap = width / 7;
+
+    for (int i = 0; i < 7; i++) {
+
+        double minutes =
+            history_stats.recent_sec[i] / 60.0;
+
+        float bar_height =
+            (float)(minutes / max_value) * height;
+
+        float cx = left + gap * (i + 0.5f);
+
+        // 역대 최고 학습일은 진한 버건디
+        Color color = bar_color;
+
+        if (history_stats.best_sec > 0 &&
+            history_stats.recent_sec[i] ==
+            history_stats.best_sec) {
+
+            color = UI_PRIMARY;
+        }
+
+        if (bar_height > 0) {
+
+            DrawRectangleRounded(
+                (Rectangle){
+                    cx - 13,
+                    bottom - bar_height,
+                    26,
+                    bar_height
+                },
+                0.2f, 10, color
+            );
+        }
+
+        // 날짜 표시
+        int month = 0;
+        int day = 0;
+
+        sscanf(
+            history_stats.recent_dates[i],
+            "%*d-%d-%d",
+            &month, &day
+        );
+
+        snprintf(
+            buf, sizeof(buf), "%d/%d",
+            month, day
+        );
+
+        t = MeasureTextEx(
+            gui_font, buf, 15, UI_FONT_SPACING
+        );
+
+        text(buf, cx - t.x / 2,
+             365, 15, UI_MUTED);
+    }
+
+    // 공부 기록이 없으면 점선 생략
+    if (history_stats.best_sec <= 0)
+        return;
+
+    // 전체 평균 점선
+    float average_y = bottom -
+        (float)(average / max_value) * height;
+
+    history_dashed_line(
+        left, right, average_y, UI_FOCUS
+    );
+
+    // 역대 최고 점선
+    float best_y = bottom -
+        (float)(best / max_value) * height;
+
+    history_dashed_line(
+        left, right, best_y, UI_WARNING
+    );
+
+    // 상단 Best 범례
+    history_dashed_line(270, 288, 221, UI_WARNING);
+
+    snprintf(buf, sizeof(buf),"Best %.1f", best);
+
+    text(buf, 293, 213, 15, UI_WARNING);
+
+    // 상단 평균 범례
+    history_dashed_line(374, 392, 221, UI_FOCUS);
+
+
+    snprintf(buf, sizeof(buf),"평균 %.1f", average);
+
+    text(buf, 397, 213, 15, UI_FOCUS);
+    
+}
+
+
+// 과목별 학습 분석 화면
+static void history_draw_analysis(void) {
+
+    char buf[128];
+    Vector2 t;
+
+    // 뒤로 가기 화살표
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){65, 48}, 3, UI_PRIMARY);
+
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){51, 36}, 3, UI_PRIMARY);
+
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){51, 60}, 3, UI_PRIMARY);
+
+    // 상단 과목명 및 제목
+    center_text(
+        history_subjects.subjects[history_selected],
+        24, 42, UI_PRIMARY
+    );
+
+    center_text("학습 분석", 66, 22, UI_MUTED);
+
+    // 통계 카드 제목
+    const char* labels[] = {
+        "누적 공부 시간",
+        "일평균 공부 시간",
+        "총 학습 일수"
+    };
+
+    // 통계 카드 3개
+    for (int i = 0; i < 3; i++) {
+
+        float x = 36 + i * 248;
+        float cx = x + 116;
+
+        // 카드 배경
+        DrawRectangleRounded(
+            (Rectangle){x, 101, 232, 86},
+            0.25f, 20, UI_SURFACE
+        );
+
+        // 카드 제목
+        t = MeasureTextEx(
+            gui_font, labels[i], 22, UI_FONT_SPACING
+        );
+
+        text(labels[i], cx - t.x / 2,
+             111, 22, UI_MUTED);
+
+        // 카드별 통계 수치
+        if (i == 0) {
+
+            long long minutes =
+                history_stats.total_study / 60;
+
+            snprintf(
+                buf, sizeof(buf),
+                "%lld시간 %lld분",
+                minutes / 60, minutes % 60
+            );
+        }
+
+        else if (i == 1) {
+
+            snprintf(
+                buf, sizeof(buf),
+                "%.1f분",
+                history_stats.average_sec / 60.0
+            );
+        }
+
+        else {
+
+            snprintf(
+                buf, sizeof(buf),
+                "%d일",
+                history_stats.study_days
+            );
+        }
+
+        // 통계 수치 가운데 정렬
+        float size = 36;
+
+        t = MeasureTextEx(
+            gui_font, buf, size, UI_FONT_SPACING
+        );
+
+        // 글자가 카드 너비를 초과하면 크기 조절
+        while (t.x > 208 && size > 12) {
+
+            size--;
+
+            t = MeasureTextEx(
+                gui_font, buf, size, UI_FONT_SPACING
+            );
+        }
+
+        text(buf, cx - t.x / 2,
+             141, size, UI_PRIMARY);
+    }
+    history_draw_chart();
+    history_draw_performance();
+    // 상세 학습 기록 버튼
+    Rectangle detail = {36, 415, 728, 49};
+
+    int hover = CheckCollisionPointRec(
+        GetMousePosition(), detail
+    );
+
+    DrawRectangleRounded(
+        detail, 0.25f, 20,
+        hover ? UI_PRIMARY_DARK : UI_PRIMARY
+    );
+
+    center_text("상세 학습 기록",
+                425, 27, UI_WHITE);
+
+    DrawLineEx((Vector2){728, 432},
+               (Vector2){737, 440}, 2.5f, UI_WHITE);
+
+    DrawLineEx((Vector2){737, 440},
+               (Vector2){728, 448}, 2.5f, UI_WHITE);    
+}
+
+// 원형 그래프 출력
+static void history_draw_ring(
+    float x, float y,
+    float rate, const char* label
+) {
+    char buf[32];
+    Vector2 center = {x, y};
+
+    if (rate < 0)
+        rate = 0;
+
+    if (rate > 100)
+        rate = 100;
+
+    // 원형 그래프 배경
+    DrawRing(
+        center,
+        40, 50,
+        0, 360, 100,
+        UI_HOVER
+    );
+
+    // 비율에 따른 진행률 표시
+    if (rate > 0) {
+
+        DrawRing(
+            center,
+            40, 50,
+            -90,
+            -90 + 360 * rate / 100,
+            100, UI_PRIMARY
+        );
+
+        // 진행률 양쪽 끝을 둥글게 처리
+        float angle =
+            (-90 + 360 * rate / 100) * DEG2RAD;
+
+        DrawCircle(
+            x, y - 45,
+            5, UI_PRIMARY
+        );
+
+        DrawCircle(
+            x + 45 * cosf(angle),
+            y + 45 * sinf(angle),
+            5, UI_PRIMARY
+        );
+    }
+
+    // 중앙 퍼센트 표시
+    snprintf(buf, sizeof(buf), "%.0f%%", rate);
+
+    Vector2 t = MeasureTextEx(
+        gui_font, buf, 32, UI_FONT_SPACING
+    );
+
+    text(buf, x - t.x / 2,
+         y - 16, 32, UI_PRIMARY);
+
+    // 원형 그래프 하단 제목
+    t = MeasureTextEx(
+        gui_font, label, 20, UI_FONT_SPACING
+    );
+
+    text(label, x - t.x / 2,
+         y + 57, 20, UI_MUTED);
+}
+
+// 학습 성과 카드
+static void history_draw_performance(void) {
+
+    // 카드 배경
+    DrawRectangleRounded(
+        (Rectangle){502, 201, 262, 195},
+        0.15f, 20, UI_SURFACE
+    );
+
+    // 카드 제목
+    Vector2 t = MeasureTextEx(
+        gui_font, "학습 성과",
+        23, UI_FONT_SPACING
+    );
+
+    text("학습 성과",
+         633 - t.x / 2,
+         211, 23, UI_TEXT);
+
+    // 집중률
+    history_draw_ring(
+        568, 301,
+        history_stats.focus_rate,
+        "집중률"
+    );
+
+    // 목표 달성률
+    history_draw_ring(
+        698, 301,
+        history_stats.achievement_rate,
+        "목표 달성률"
+    );
+}
+
+// 학습 기록 날짜 오름차순 정렬
+static int history_compare(
+    const void* a, const void* b
+) {
+    const Session* s1 = a;
+    const Session* s2 = b;
+
+    int result = strcmp(s1->date, s2->date);
+
+    if (result != 0)
+        return result;
+
+    if (s1->session_num < s2->session_num)
+        return -1;
+
+    if (s1->session_num > s2->session_num)
+        return 1;
+
+    return 0;
+}
+
+// 선택한 과목의 n번째 학습 기록
+static Session* history_get_record(int index) {
+
+    const char* subject =
+        history_subjects.subjects[history_selected];
+
+    int count = 0;
+
+    for (int i = 0; i < history_count; i++) {
+
+        if (strcmp(history_list[i].subject, subject) != 0)
+            continue;
+
+        if (count == index)
+            return &history_list[i];
+
+        count++;
+    }
+
+    return NULL;
+}
+
+// 역대 최고 학습일인지 확인
+static int history_is_best(const Session* s) {
+
+    if (history_stats.best_sec <= 0)
+        return 0;
+
+    return history_daily_total(
+        s->subject, s->date
+    ) == history_stats.best_sec;
+}
+
+
+// 상세 학습 기록 화면
+static void history_draw_records(void) {
+
+    char buf[128];
+    Vector2 t;
+
+    Color best_bg = {231, 202, 213, 255};
+
+    // 뒤로 가기 화살표
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){65, 48}, 3, UI_PRIMARY);
+
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){51, 36}, 3, UI_PRIMARY);
+
+    DrawLineEx((Vector2){39, 48},
+               (Vector2){51, 60}, 3, UI_PRIMARY);
+
+    // 상단 제목
+    center_text("상세 학습 기록",
+                24, 42, UI_PRIMARY);
+
+    center_text(
+        history_subjects.subjects[history_selected],
+        72, 23, UI_MUTED
+    );
+
+    // 테이블 배경
+    DrawRectangleRounded(
+        (Rectangle){30, 112, 740, 306},
+        0.12f, 20, UI_SURFACE
+    );
+
+    // 열 제목
+    const char* labels[] = {
+        "날짜",
+        "목표 시간",
+        "공부 시간",
+        "이탈 시간",
+        "이탈 횟수",
+        "목표 달성"
+    };
+
+    float cx[] = {
+        103, 239, 350, 461, 572, 700
+    };
+
+    for (int i = 0; i < 6; i++) {
+
+        t = MeasureTextEx(
+            gui_font, labels[i],
+            21, UI_FONT_SPACING
+        );
+
+        text(labels[i], cx[i] - t.x / 2,
+             130, 21, UI_MUTED);
+    }
+
+    DrawLine(44, 160, 756, 160, UI_PRIMARY);
+
+    // 학습 기록이 없는 경우
+    if (history_stats.session_count == 0) {
+
+        center_text("저장된 학습 기록이 없습니다.",
+                    260, 25, UI_MUTED);
+    }
+
+    // 한 화면에 최대 5개 기록 표시
+    for (int i = 0; i < 5; i++) {
+
+        Session* s = history_get_record(
+            history_record_scroll + i
+        );
+
+        if (s == NULL)
+            break;
+
+        float y = 162 + i * 50;
+
+        // BEST 학습일 배경 강조
+        if (history_is_best(s)) {
+
+            DrawRectangle(
+                36, y, 728, 49, best_bg
+            );
+
+            DrawRectangle(
+                36, y, 5, 49, UI_PRIMARY
+            );
+        }
+
+        // 날짜 및 학습 수치 출력
+        for (int j = 0; j < 5; j++) {
+
+            switch (j) {
+
+                case 0:
+                    snprintf(buf, sizeof(buf),
+                             "%s", s->date);
+                    break;
+
+                case 1:
+                    snprintf(buf, sizeof(buf),
+                             "%d", s->goal_min);
+                    break;
+
+                case 2:
+                    snprintf(buf, sizeof(buf),
+                             "%d", s->study_sec / 60);
+                    break;
+
+                case 3:
+                    snprintf(buf, sizeof(buf),
+                             "%d", s->distract_sec / 60);
+                    break;
+
+                case 4:
+                    snprintf(buf, sizeof(buf),
+                             "%d", s->distract_count);
+                    break;
+            }
+
+            t = MeasureTextEx(
+                gui_font, buf, 22, UI_FONT_SPACING
+            );
+
+            text(buf, cx[j] - t.x / 2,
+                 y + 13, 22,
+                 j == 2 ? UI_PRIMARY : UI_TEXT);
+        }
+
+        // 목표 달성 여부
+        const char* status =
+            s->goal_achieved ? "달성" : "미달성";
+
+        Color status_bg = s->goal_achieved
+            ? (Color){228, 239, 232, 255}
+            : UI_HOVER;
+
+        Color status_color = s->goal_achieved
+            ? UI_FOCUS : UI_PRIMARY;
+
+        DrawRectangleRounded(
+            (Rectangle){663, y + 9, 74, 30},
+            1.0f, 20, status_bg
+        );
+
+        t = MeasureTextEx(
+            gui_font, status, 19, UI_FONT_SPACING
+        );
+
+        text(status, 700 - t.x / 2,
+             y + 14, 19, status_color);
+
+        // 행 구분선
+        if (i < 4)
+            DrawLine(44, y + 49,
+                     756, y + 49, UI_BORDER);
+    }
+
+    // 스크롤바
+    if (history_stats.session_count > 5) {
+
+        float height =
+            250.0f * 5 / history_stats.session_count;
+
+        float position =
+            250.0f * history_record_scroll
+            / history_stats.session_count;
+
+        DrawRectangleRounded(
+            (Rectangle){779, 162, 6, 250},
+            1.0f, 10, UI_BORDER
+        );
+
+        DrawRectangleRounded(
+            (Rectangle){779, 162 + position, 6, height},
+            1.0f, 10, UI_PRIMARY
+        );
+    }
+
+    // 하단 BEST 기록 안내
+    if (history_stats.best_sec > 0) {
+
+        DrawRectangleRounded(
+            (Rectangle){36, 438, 16, 16},
+            0.3f, 10, best_bg
+        );
+
+        snprintf(
+            buf, sizeof(buf),
+            "BEST · %.1f분",
+            history_stats.best_sec / 60.0
+        );
+
+        text(buf, 61, 434, 21, UI_PRIMARY);
+    }
+
+    // 전체 기록 개수 및 단위
+    snprintf(
+        buf, sizeof(buf),
+        "총 %d개의 기록 · 단위: 분",
+        history_stats.session_count
+    );
+
+    t = MeasureTextEx(
+        gui_font, buf, 20, UI_FONT_SPACING
+    );
+
+    text(buf, 764 - t.x,
+         434, 20, UI_MUTED);
+}

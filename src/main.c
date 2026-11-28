@@ -364,6 +364,9 @@ int main(void) {
                 screen = selected;        
                 if (screen == 1)            
                 setup_init(&setup);    
+
+                else if (screen == 2)  
+                history_init();
             }
         }
 
@@ -381,6 +384,18 @@ int main(void) {
                 screen = 0;    
             }
         }
+        // 학습 기록 화면
+        else if (screen == 2) {  
+            if (history_update() == -1) {    
+                history_close();      
+                screen = 0;   
+            }
+  
+            else {    
+                history_draw();  
+            }
+        }
+
         // 학습 진행 및 결과 화면
         else if (screen == 5) {
     
@@ -426,9 +441,10 @@ int main(void) {
 
     // 폰트 메모리 해제
     if (font.texture.id != GetFontDefault().texture.id)
-        UnloadFont(font);
-
-    CloseWindow();
+        UnloadFont(font);    
+        
+        history_close();
+        CloseWindow();
 
     return 0;
 }

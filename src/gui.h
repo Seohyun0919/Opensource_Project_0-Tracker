@@ -67,4 +67,12 @@ void draw_warning_screen(int keyword_index);
 // 기록 저장 실패 안내
 void draw_save_error(void);
 
+// 학습 기록 화면
+void history_init(void);
+int history_update(void);
+void history_draw(void);
+void history_close(void);
+
+
+
 #endif
