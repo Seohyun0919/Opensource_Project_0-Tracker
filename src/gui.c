@@ -11,9 +11,21 @@
 
 // main.c에서 불러온 폰트 공유
 static Font gui_font;
+static RenderTexture2D gui_target;
+static int gui_expanded = 0;
 
 void gui_init(Font font) {
+
     gui_font = font;
+
+    gui_target = LoadRenderTexture(
+        UI_WIDTH, UI_HEIGHT
+    );
+
+    SetTextureFilter(
+        gui_target.texture,
+        TEXTURE_FILTER_BILINEAR
+    );
 }
 
 // 일반 텍스트 출력
@@ -2600,4 +2612,57 @@ static void history_draw_records(void) {
 
     text(buf, 764 - t.x,
          434, 20, UI_MUTED);
+}
+
+// 학습 기록 화면 확대 여부
+int history_is_expanded(void) {
+    return history_page == 1 || history_page == 2;
+}
+
+// 화면 출력 시작 및 창 크기 조절
+void gui_begin(int screen) {
+
+    int expanded =
+        screen == 2 && history_is_expanded();
+
+    if (expanded != gui_expanded) {
+
+        gui_expanded = expanded;
+
+        if (gui_expanded) {
+            SetWindowSize(1200, 720);
+            SetMouseScale(2.0f / 3.0f, 2.0f / 3.0f);
+        }
+        else {
+            SetWindowSize(800, 480);
+            SetMouseScale(1.0f, 1.0f);
+        }
+    }
+
+    BeginTextureMode(gui_target);
+}
+
+// 화면 출력 종료
+void gui_end(void) {
+
+    EndTextureMode();
+
+    BeginDrawing();
+
+    ClearBackground(UI_BG);
+
+    DrawTexturePro(
+        gui_target.texture,
+        (Rectangle){0, 0, UI_WIDTH, -UI_HEIGHT},
+        (Rectangle){0, 0, GetScreenWidth(), GetScreenHeight()},
+        (Vector2){0, 0},
+        0, WHITE
+    );
+
+    EndDrawing();
+}
+
+// GUI 메모리 해제
+void gui_close(void) {
+    UnloadRenderTexture(gui_target);
 }

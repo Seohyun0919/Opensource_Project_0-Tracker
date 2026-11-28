@@ -72,6 +72,11 @@ void history_init(void);
 int history_update(void);
 void history_draw(void);
 void history_close(void);
+int history_is_expanded(void);
+
+void gui_begin(int screen);
+void gui_end(void);
+void gui_close(void);
 
 
 

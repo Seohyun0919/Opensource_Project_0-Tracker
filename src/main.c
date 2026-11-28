@@ -350,7 +350,7 @@ int main(void) {
     // 메인 반복문
     while (!WindowShouldClose() && running) {
 
-        BeginDrawing();
+        gui_begin(screen);
         ClearBackground(UI_BG);
 
         // 메인 메뉴
@@ -431,7 +431,7 @@ int main(void) {
             }
         }      
  
-        EndDrawing();  
+        gui_end();  
     }
 
     
@@ -444,6 +444,7 @@ int main(void) {
         UnloadFont(font);    
         
         history_close();
+        gui_close();
         CloseWindow();
 
     return 0;
