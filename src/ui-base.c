@@ -55,7 +55,7 @@ int main() {
                 break;
             }
 
-            study_ui(&rec);
+            study_ui(&rec, 0);
 
             result_ui(rec.subject, rec.goal_min,
                       rec.study_sec, rec.distract_sec, rec.distract_count,

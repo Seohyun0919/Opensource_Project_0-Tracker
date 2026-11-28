@@ -56,7 +56,7 @@ static void draw_study(const char* subject, int goal_min,
     fflush(stdout);
 }
 
-void study_ui(Session* rec)
+void study_ui(Session* rec, int resume)
 {
     TimerState timer;
     int last_sec = -1;
@@ -75,13 +75,17 @@ void study_ui(Session* rec)
         }
     }
 
-    rec->study_sec = 0;
-    rec->distract_sec = 0;
-    rec->distract_count = 0;
-    rec->goal_achieved = 0;
+    // 이어하기는 복구한 기록을 그대로 둠
+    if (!resume) {
+        rec->study_sec = 0;
+        rec->distract_sec = 0;
+        rec->distract_count = 0;
+        rec->goal_achieved = 0;
+    }
 
     system("cls");
-    start_timer(&timer, GetTickCount64() / 1000.0);
+    if (resume) resume_timer(&timer, rec, GetTickCount64() / 1000.0);
+    else start_timer(&timer, GetTickCount64() / 1000.0);
     while (1) {
         int quit = 0;
         if (_kbhit()) {
