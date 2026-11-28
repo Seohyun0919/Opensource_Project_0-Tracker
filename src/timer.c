@@ -12,6 +12,7 @@
 #define MIN_GOAL_MIN 1
 #define MAX_GOAL_MIN 600
 #define LINE_BUF_SIZE 256
+#define TEMP_SAVE_SEC 60 // 비정상 종료 때 잃는 기록을 최대 1분으로 제한하려고 정함
 
 // 문자열의 글자 수를 계산하는 함수
 static int count_chars(const char *str)
@@ -178,6 +179,7 @@ void input_plan(Session *rec)
 void start_timer(TimerState* timer, double now)
 {
     timer->start_time = now;
+    timer->last_temp_save = now;
     init_detect();
 }
 
@@ -188,4 +190,12 @@ void update_timer(const TimerState* timer, Session* rec, double now)
     update_detect(rec, elapsed);
     rec->study_sec = elapsed - rec->distract_sec;
     rec->goal_achieved = (rec->study_sec >= rec->goal_min * 60);
+}
+
+void save_temp_if_due(TimerState* timer, const Session* rec, double now)
+{
+    if (now - timer->last_temp_save < TEMP_SAVE_SEC) return;
+    timer->last_temp_save = now;
+    // 저장에 실패해도 학습은 멈추지 않음
+    saveTempSession(rec);
 }

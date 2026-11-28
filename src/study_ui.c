@@ -96,6 +96,7 @@ void study_ui(Session* rec)
 
         // 종료 키를 누른 시점까지 계산한다.
         update_timer(&timer, rec, GetTickCount64() / 1000.0);
+        save_temp_if_due(&timer, rec, GetTickCount64() / 1000.0);
         if (quit) {
             break;
         }
