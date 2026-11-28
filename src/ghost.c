@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <windows.h>
 #include "ghost.h"
 
 #define GHOST_CHEER_TEXT "최고 기록 때는 학습 이탈 중이었는데, 지금은 집중하고 있어요! 화이팅!"
@@ -195,8 +196,49 @@ GhostResult finish_ghost(const Session* today)
     return result;
 }
 
+// 고스트 메시지를 팝업창으로 띄움
+// 사용자가 확인을 누를 때까지 다음으로 넘어가지 않음 
+void show_ghost_popup(const char*text)
+{
+    // 팝업 창에 넣을 윈도우용 문자열 (한글도 가능)
+    wchar_t wide_text[256];
+
+    // 메시지는 UTF-8 문자열이기 때문에 그대로 넣으면 한글 깨짐
+    // -> MessageBoxW가 읽을 수 있는 윈도우용으로 바꿈 
+    MultiByteToWideChar(CP_UTF8, 0, text, -1, wide_text, 256);
+
+    // 팝업창 띄우기
+    // L"0:Tracker GHOST" : 팝업창 제목 (앞의 L은 윈도우용 문자열)
+    // MB_OK : 확인 버튼
+    // MB_ICONINFORMATION : 정보 아이콘
+    // MB_TOPMOST : 다른 창보다 항상 위에 뜸 
+    MessageBoxW(NULL, wide_text, L"0:Tracker GHOST", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+}
+
 #ifdef GHOST_TEST
-#include <windows.h> // SetConsoleOutputCP를 사용하기 위해서 
+
+void print_time(int total_sec)
+{
+    int hour = total_sec / 3600;
+    int min = (total_sec % 3600) / 60;
+    int sec = total_sec % 60;
+
+    if (hour > 0)
+    {
+        printf("%d시간 %d분 %d초", hour, min, sec);
+    }
+
+    else if (min > 0)
+    {
+      printf("%d분 %d초", min, sec);
+    }   
+    
+    else
+    {
+        printf("%d초", sec);
+    }
+}
+
 int main(void)
 {
     Session today = {0}; // 오늘 학습 기록 (0으로 시작함)
@@ -247,8 +289,13 @@ int main(void)
         text = update_ghost(&today, t);
         if (text != NULL)
         {
-            // 90초 -> 01:30처럼 분:초로 출력함 
-            printf(" %02d:%02d %s\n", t/60, t%60, text);
+            // 90초 -> 1분 30초 형식으로 출력 
+            printf(" ");
+            print_time(t);
+            printf(" %s\n", text);
+
+            // 메시지 팝업창으로 출력 
+            show_ghost_popup(text);
         }
     }
 
@@ -257,9 +304,12 @@ int main(void)
     today.study_sec = 300 - today.distract_sec;
     result = finish_ghost(&today);
     printf("\n[결과]\n");
-    printf(" 오늘 학습 %2d분 %02d초\n", result.today_sec / 60, result.today_sec % 60);
-    printf(" 최고 기록 %2d분 %02d초\n", result.best_sec / 60, result.best_sec % 60);
-
+    printf(" 오늘 학습 ");
+    print_time(result.today_sec);
+    printf("\n 최고 기록 ");
+    print_time(result.best_sec);
+    printf("\n");
+    
     // 오늘 기록이 더 길면 갱신하고, 같거나 짧으면 유지함
     if (result.is_new == 1)
     {
