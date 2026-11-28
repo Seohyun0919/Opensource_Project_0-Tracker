@@ -36,27 +36,12 @@ static int findSessionByNum(int session_num, Session* out)
 }
 
 // 이탈 없이 이어진 창들을 한 구간으로 묶음. 구간이 없으면 0
-static int calcAvgFocusSec(int session_num)
+static int calcAvgFocusSec(const WindowLog* logs, int count)
 {
-    WindowLog* logs;
-    int count;
-    int found;
     int i;
     int focus_sum = 0;
     int segments = 0;
 
-    count = loadWindowLogs(session_num, NULL, 0);
-    if (count == 0) {
-        return 0;
-    }
-    logs = malloc(count * sizeof(WindowLog));
-    if (logs == NULL) {
-        return 0;
-    }
-    found = loadWindowLogs(session_num, logs, count);
-    if (found < count) {
-        count = found;
-    }
     for (i = 0; i < count; i++) {
         if (logs[i].is_distract) {
             continue;
@@ -66,8 +51,65 @@ static int calcAvgFocusSec(int session_num)
             segments++;
         }
     }
-    free(logs);
     return segments > 0 ? focus_sum / segments : 0;
+}
+
+// 제목이 같은 이탈 창끼리 머문 시간을 더해 가장 긴 창을 고름. 시간이 같으면 먼저 나온 창
+// 주의: 제목이 완전히 같아야 같은 창. 영상마다 제목이 바뀌는 YouTube 탭은 따로 셈
+static void findTopDistractWindow(const WindowLog* logs, int count, char* out, size_t out_size)
+{
+    int i;
+    int j;
+    int sum;
+    int best_sum = 0;
+    int seen;
+
+    for (i = 0; i < count; i++) {
+        if (!logs[i].is_distract) {
+            continue;
+        }
+        seen = 0;
+        for (j = 0; j < i && !seen; j++) {
+            seen = logs[j].is_distract && strcmp(logs[j].window_title, logs[i].window_title) == 0;
+        }
+        if (seen) {
+            continue;
+        }
+        sum = 0;
+        for (j = i; j < count; j++) {
+            if (logs[j].is_distract && strcmp(logs[j].window_title, logs[i].window_title) == 0) {
+                sum += logs[j].stay_sec;
+            }
+        }
+        if (sum > best_sum) {
+            best_sum = sum;
+            strcpy_s(out, out_size, logs[i].window_title);
+        }
+    }
+}
+
+static void analyzeWindowLogs(int session_num, AnalysisResult* result)
+{
+    WindowLog* logs;
+    int count;
+    int found;
+
+    count = loadWindowLogs(session_num, NULL, 0);
+    if (count == 0) {
+        return;
+    }
+    logs = malloc(count * sizeof(WindowLog));
+    if (logs == NULL) {
+        return;
+    }
+    found = loadWindowLogs(session_num, logs, count);
+    if (found < count) {
+        count = found;
+    }
+    result->avg_focus_sec = calcAvgFocusSec(logs, count);
+    findTopDistractWindow(logs, count, result->top_distract_window,
+                          sizeof(result->top_distract_window));
+    free(logs);
 }
 
 void analyzeSession(int session_num, AnalysisResult* result)
@@ -88,5 +130,5 @@ void analyzeSession(int session_num, AnalysisResult* result)
     if (total_sec > 0) {
         result->focus_rate = s.study_sec * 100.0 / total_sec;
     }
-    result->avg_focus_sec = calcAvgFocusSec(session_num);
+    analyzeWindowLogs(session_num, result);
 }
