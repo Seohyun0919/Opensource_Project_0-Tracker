@@ -35,6 +35,41 @@ static int findSessionByNum(int session_num, Session* out)
     return ok;
 }
 
+// 이탈 없이 이어진 창들을 한 구간으로 묶음. 구간이 없으면 0
+static int calcAvgFocusSec(int session_num)
+{
+    WindowLog* logs;
+    int count;
+    int found;
+    int i;
+    int focus_sum = 0;
+    int segments = 0;
+
+    count = loadWindowLogs(session_num, NULL, 0);
+    if (count == 0) {
+        return 0;
+    }
+    logs = malloc(count * sizeof(WindowLog));
+    if (logs == NULL) {
+        return 0;
+    }
+    found = loadWindowLogs(session_num, logs, count);
+    if (found < count) {
+        count = found;
+    }
+    for (i = 0; i < count; i++) {
+        if (logs[i].is_distract) {
+            continue;
+        }
+        focus_sum += logs[i].stay_sec;
+        if (i == 0 || logs[i - 1].is_distract) {
+            segments++;
+        }
+    }
+    free(logs);
+    return segments > 0 ? focus_sum / segments : 0;
+}
+
 void analyzeSession(int session_num, AnalysisResult* result)
 {
     Session s;
@@ -53,4 +88,5 @@ void analyzeSession(int session_num, AnalysisResult* result)
     if (total_sec > 0) {
         result->focus_rate = s.study_sec * 100.0 / total_sec;
     }
+    result->avg_focus_sec = calcAvgFocusSec(session_num);
 }
