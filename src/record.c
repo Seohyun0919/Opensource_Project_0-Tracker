@@ -10,6 +10,9 @@
 // 세션 줄은 모든 칸을 최대로 채워도 210바이트 안쪽. 키워드, 과목 줄은 더 짧음
 // 주의: 창 전환 줄은 제목만 768바이트라 읽을 때는 더 큰 버퍼가 필요함
 #define LINE_BUF_SIZE 512
+#define LOG_FIELDS 5
+// 제목 768바이트에 나머지 칸을 다 채워도 50바이트 안쪽
+#define LOG_LINE_BUF_SIZE 1024
 #define KEYWORD_BUF (MAX_KEYWORD_LEN * 3 + 1)
 #define SUBJECT_BUF (MAX_SUBJECT_LEN * 3 + 1)
 
@@ -174,6 +177,60 @@ int findSessionsByDate(const char* date, Session* list, int max)
 int findSessionsBySubject(const char* subject, Session* list, int max)
 {
     return loadMatching(NULL, subject, list, max);
+}
+
+// 제목이 빈 창이면 탭이 두 개 붙는데 strtok_s는 빈 칸을 건너뛰어 칸이 밀림. 그래서 직접 나눔
+static int parseWindowLog(char* line, int* session_num, WindowLog* log)
+{
+    char* fields[LOG_FIELDS];
+    int n = 1;
+
+    line[strcspn(line, "\r\n")] = '\0';
+    fields[0] = line;
+    for (; *line != '\0'; line++) {
+        if (*line != '\t') {
+            continue;
+        }
+        if (n == LOG_FIELDS) {
+            return 0;
+        }
+        *line = '\0';
+        fields[n++] = line + 1;
+    }
+    if (n != LOG_FIELDS) {
+        return 0;
+    }
+
+    *session_num = atoi(fields[0]);
+    strncpy_s(log->switch_time, sizeof(log->switch_time), fields[1], _TRUNCATE);
+    strncpy_s(log->window_title, sizeof(log->window_title), fields[2], _TRUNCATE);
+    log->stay_sec = atoi(fields[3]);
+    log->is_distract = atoi(fields[4]);
+    return 1;
+}
+
+int loadWindowLogs(int session_num, WindowLog* list, int max)
+{
+    FILE* fp;
+    char line[LOG_LINE_BUF_SIZE];
+    WindowLog log;
+    int num;
+    int count = 0;
+
+    if (fopen_s(&fp, FILE_WINDOW_LOG, "r") != 0) {
+        return 0;
+    }
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        if (skipLongLine(fp, line) || !parseWindowLog(line, &num, &log) || num != session_num) {
+            continue;
+        }
+        if (count < max) {
+            list[count] = log;
+        }
+        count++;
+    }
+    fclose(fp);
+    return count;
 }
 
 int getPrevDayStudySec(const char* date)
